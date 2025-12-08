@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Encipher Food Pool</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Poppins',sans-serif;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);min-height:100vh;display:flex;align-items:center;justify-content:center}
+        .container{background:rgba(255,255,255,0.05);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.1);border-radius:24px;padding:50px 40px;text-align:center;max-width:400px;width:90%}
+        .logo{width:80px;height:80px;background:linear-gradient(135deg,#e94560,#ff6b6b);border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:40px}
+        h1{color:#fff;font-size:1.8rem;font-weight:600;margin-bottom:8px}
+        .subtitle{color:rgba(255,255,255,0.6);font-size:0.95rem;margin-bottom:30px}
+        .company{color:#e94560;font-weight:500}
+        .btn{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:16px 24px;background:linear-gradient(135deg,#e94560,#ff6b6b);border:none;border-radius:12px;color:#fff;font-size:1rem;font-weight:600;cursor:pointer;transition:all 0.2s;text-decoration:none}
+        .btn:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(233,69,96,0.3)}
+        .features{margin-top:30px;display:flex;justify-content:center;gap:20px}
+        .feature{text-align:center}
+        .feature-icon{font-size:24px;margin-bottom:5px}
+        .feature-text{color:rgba(255,255,255,0.5);font-size:0.75rem}
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="logo">🍽️</div>
+    <h1>Food Pool</h1>
+    <p class="subtitle">Employee Food Management<br><span class="company">Encipher Health</span></p>
+    
+    <a href="/oauth2/authorization/zoho" class="btn">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/>
+        </svg>
+        Sign in with Zoho
+    </a>
+    
+    <div class="features">
+        <div class="feature"><div class="feature-icon">📝</div><div class="feature-text">Register<br>for Meals</div></div>
+        <div class="feature"><div class="feature-icon">📱</div><div class="feature-text">Scan QR<br>to Collect</div></div>
+        <div class="feature"><div class="feature-icon">📊</div><div class="feature-text">Track<br>History</div></div>
+    </div>
+</div>
+</body>
+</html>
+

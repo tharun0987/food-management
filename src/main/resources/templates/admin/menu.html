@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu Settings | Food Pool</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Poppins',sans-serif;background:#0f0f1a;min-height:100vh;color:#fff}
+        .header{background:linear-gradient(135deg,#1a1a2e,#16213e);padding:15px 20px;display:flex;align-items:center;gap:15px}
+        .back{color:#fff;text-decoration:none;font-size:1.5rem}
+        .title{font-size:1.1rem;font-weight:600}
+        .container{max-width:600px;margin:0 auto;padding:20px}
+        h2{margin:25px 0 15px;font-size:1.1rem}
+        .card{background:rgba(255,255,255,0.05);border-radius:16px;padding:25px;margin:15px 0}
+        .card-title{font-size:0.9rem;color:rgba(255,255,255,0.6);margin-bottom:15px}
+        
+        .toggle-row{display:flex;justify-content:space-between;align-items:center;padding:15px 0;border-bottom:1px solid rgba(255,255,255,0.1)}
+        .toggle-row:last-child{border:none}
+        .toggle-label{display:flex;align-items:center;gap:10px;font-size:1rem}
+        .toggle-desc{font-size:0.75rem;color:rgba(255,255,255,0.5)}
+        .toggle{width:60px;height:32px;background:rgba(255,255,255,0.1);border-radius:16px;position:relative;cursor:pointer;transition:all 0.3s}
+        .toggle.active{background:#00ff88}
+        .toggle::after{content:'';position:absolute;width:26px;height:26px;background:#fff;border-radius:50%;top:3px;left:3px;transition:all 0.3s}
+        .toggle.active::after{left:31px}
+        .toggle.disabled{opacity:0.5;cursor:not-allowed}
+        
+        .items-section{margin-top:15px}
+        .items-title{font-size:0.85rem;color:rgba(255,255,255,0.6);margin-bottom:8px}
+        .items-input{width:100%;padding:12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-family:inherit;margin-bottom:10px}
+        .items-input::placeholder{color:rgba(255,255,255,0.3)}
+        .items-hint{font-size:0.7rem;color:rgba(255,255,255,0.4)}
+        
+        .btn{width:100%;padding:16px;border:none;border-radius:12px;font-size:1rem;font-weight:600;cursor:pointer;margin-top:20px;transition:all 0.3s}
+        .btn-primary{background:linear-gradient(135deg,#e94560,#ff6b6b);color:#fff}
+        .btn:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(233,69,96,0.3)}
+        
+        .message{padding:15px;border-radius:10px;margin:15px 0;text-align:center}
+        .message.success{background:rgba(0,255,136,0.15);color:#00ff88}
+        .hidden{display:none}
+        
+        .info-box{background:rgba(0,217,255,0.1);border:1px solid rgba(0,217,255,0.3);border-radius:10px;padding:15px;margin:15px 0;font-size:0.85rem}
+        .info-box strong{color:#00d9ff}
+    </style>
+</head>
+<body>
+<div class="header">
+    <a href="/admin" class="back">←</a>
+    <span class="title">Menu Settings</span>
+</div>
+
+<div class="container">
+    <h2 th:text="'Configure Menu for ' + ${todayDisplay}">Configure Menu</h2>
+    
+    <div class="info-box">
+        <strong>💡 How it works:</strong><br>
+        1. Enable "Food Available" if serving food today<br>
+        2. Choose Veg/Non-veg options<br>
+        3. Add dish names (optional)<br>
+        4. Save, then go to Dashboard to start the survey
+    </div>
+    
+    <div id="message" class="message success hidden">Settings saved!</div>
+    
+    <!-- Food Availability -->
+    <div class="card">
+        <div class="toggle-row">
+            <div>
+                <span class="toggle-label">🍽️ Food Available Today</span>
+                <div class="toggle-desc">Enable this if food is being served today</div>
+            </div>
+            <div class="toggle" id="foodToggle" th:classappend="${menu.foodAvailable} ? 'active'" onclick="toggleFood()"></div>
+        </div>
+    </div>
+    
+    <!-- Options -->
+    <div class="card" id="optionsCard">
+        <div class="card-title">AVAILABLE OPTIONS</div>
+        
+        <div class="toggle-row">
+            <span class="toggle-label">🥗 Vegetarian</span>
+            <div class="toggle" id="vegToggle" th:classappend="${menu.vegAvailable} ? 'active'" onclick="toggleVeg()"></div>
+        </div>
+        
+        <div class="toggle-row">
+            <span class="toggle-label">🍗 Non-Vegetarian</span>
+            <div class="toggle" id="nonvegToggle" th:classappend="${menu.nonvegAvailable} ? 'active'" onclick="toggleNonveg()"></div>
+        </div>
+    </div>
+    
+    <!-- Dishes -->
+    <div class="card" id="dishesCard">
+        <div class="card-title">DISHES (Optional)</div>
+        
+        <div class="items-section">
+            <div class="items-title">Veg Dishes</div>
+            <input type="text" class="items-input" id="vegItems" 
+                   th:value="${menu.vegItems != null ? #strings.listJoin(menu.vegItems, ', ') : ''}"
+                   placeholder="e.g., Rice, Dal, Paneer, Roti">
+            <div class="items-hint">Comma separated. Leave empty to show "Enjoy your meal!"</div>
+        </div>
+        
+        <div class="items-section">
+            <div class="items-title">Non-Veg Dishes</div>
+            <input type="text" class="items-input" id="nonvegItems"
+                   th:value="${menu.nonvegItems != null ? #strings.listJoin(menu.nonvegItems, ', ') : ''}"
+                   placeholder="e.g., Chicken Curry, Biryani, Egg">
+            <div class="items-hint">Comma separated. Leave empty to show "Enjoy your meal!"</div>
+        </div>
+    </div>
+    
+    <button class="btn btn-primary" onclick="saveMenu()">💾 Save Menu Settings</button>
+</div>
+
+<script th:inline="javascript">
+    let foodAvailable = [[${menu.foodAvailable}]];
+    let vegAvailable = [[${menu.vegAvailable}]];
+    let nonvegAvailable = [[${menu.nonvegAvailable}]];
+    
+    function updateUI() {
+        const optionsCard = document.getElementById('optionsCard');
+        const dishesCard = document.getElementById('dishesCard');
+        optionsCard.style.opacity = foodAvailable ? '1' : '0.4';
+        dishesCard.style.opacity = foodAvailable ? '1' : '0.4';
+    }
+    
+    function toggleFood() {
+        foodAvailable = !foodAvailable;
+        document.getElementById('foodToggle').classList.toggle('active', foodAvailable);
+        if (!foodAvailable) {
+            vegAvailable = false;
+            nonvegAvailable = false;
+            document.getElementById('vegToggle').classList.remove('active');
+            document.getElementById('nonvegToggle').classList.remove('active');
+        }
+        updateUI();
+    }
+    
+    function toggleVeg() {
+        if (!foodAvailable) return;
+        vegAvailable = !vegAvailable;
+        document.getElementById('vegToggle').classList.toggle('active', vegAvailable);
+    }
+    
+    function toggleNonveg() {
+        if (!foodAvailable) return;
+        nonvegAvailable = !nonvegAvailable;
+        document.getElementById('nonvegToggle').classList.toggle('active', nonvegAvailable);
+    }
+    
+    async function saveMenu() {
+        const vegItems = document.getElementById('vegItems').value.split(',').map(s => s.trim()).filter(s => s);
+        const nonvegItems = document.getElementById('nonvegItems').value.split(',').map(s => s.trim()).filter(s => s);
+        
+        try {
+            const res = await fetch('/admin/menu/update', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    foodAvailable,
+                    vegAvailable,
+                    nonvegAvailable,
+                    vegItems,
+                    nonvegItems
+                })
+            });
+            
+            const data = await res.json();
+            const msg = document.getElementById('message');
+            msg.textContent = data.success ? 'Settings saved!' : data.error;
+            msg.classList.remove('hidden');
+            msg.style.background = data.success ? 'rgba(0,255,136,0.15)' : 'rgba(255,82,82,0.15)';
+            msg.style.color = data.success ? '#00ff88' : '#ff5252';
+            
+            setTimeout(() => msg.classList.add('hidden'), 3000);
+        } catch (e) {
+            alert('Error: ' + e.message);
+        }
+    }
+    
+    updateUI();
+</script>
+</body>
+</html>

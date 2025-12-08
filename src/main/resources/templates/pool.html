@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Food Pool | Encipher</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Poppins',sans-serif;background:#0f0f1a;min-height:100vh;color:#fff}
+        .header{background:linear-gradient(135deg,#1a1a2e,#16213e);padding:15px 20px;display:flex;align-items:center;gap:15px}
+        .back{color:#fff;text-decoration:none;font-size:1.5rem}
+        .title{font-size:1.1rem;font-weight:600}
+        .container{max-width:500px;margin:0 auto;padding:20px}
+        h2{text-align:center;margin:20px 0;font-size:1.3rem}
+        
+        .status-card{border-radius:16px;padding:25px;text-align:center;margin:20px 0}
+        .status-card.closed{background:rgba(255,170,0,0.1);border:2px solid #ffaa00}
+        .status-card.unavailable{background:rgba(255,82,82,0.1);border:2px solid #ff5252}
+        .status-card.success{background:rgba(0,255,136,0.1);border:2px solid #00ff88}
+        .status-icon{font-size:50px;margin-bottom:15px}
+        .status-title{font-size:1.2rem;font-weight:600;margin-bottom:10px}
+        .status-desc{color:rgba(255,255,255,0.6);font-size:0.9rem}
+        
+        .food-options{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:30px 0}
+        .food-card{background:rgba(255,255,255,0.05);border:3px solid transparent;border-radius:20px;padding:25px 15px;text-align:center;cursor:pointer;transition:all 0.3s}
+        .food-card:hover:not(.disabled){border-color:rgba(255,255,255,0.2);transform:scale(1.02)}
+        .food-card.selected{border-color:#00ff88;background:rgba(0,255,136,0.1)}
+        .food-card.disabled{opacity:0.4;cursor:not-allowed}
+        .food-icon{font-size:50px;margin-bottom:12px}
+        .food-label{font-size:1.1rem;font-weight:600;margin-bottom:8px}
+        .food-status{font-size:0.75rem;margin-bottom:10px}
+        .food-status.available{color:#00ff88}
+        .food-status.unavailable{color:#ff5252}
+        .food-dishes{font-size:0.75rem;color:rgba(255,255,255,0.5);line-height:1.4}
+        
+        .submit-btn{width:100%;padding:18px;background:linear-gradient(135deg,#e94560,#ff6b6b);border:none;border-radius:12px;color:#fff;font-size:1.1rem;font-weight:600;cursor:pointer;margin-top:20px;transition:all 0.3s}
+        .submit-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 10px 30px rgba(233,69,96,0.3)}
+        .submit-btn:disabled{opacity:0.5;cursor:not-allowed}
+        
+        .message{padding:15px;border-radius:10px;margin:15px 0;text-align:center}
+        .message.success{background:rgba(0,255,136,0.15);color:#00ff88}
+        .message.error{background:rgba(255,82,82,0.15);color:#ff5252}
+        .hidden{display:none}
+        
+        .back-link{display:block;text-align:center;margin-top:20px;color:rgba(255,255,255,0.5);text-decoration:none}
+        .back-link:hover{color:#fff}
+    </style>
+</head>
+<body>
+<div class="header">
+    <a href="/home" class="back">←</a>
+    <span class="title">Food Pool Registration</span>
+</div>
+
+<div class="container">
+    <!-- Already Pooled -->
+    <div th:if="${alreadyPooled}" class="status-card success">
+        <div class="status-icon">✅</div>
+        <div class="status-title">Already Registered!</div>
+        <div class="status-desc">
+            You've registered for <strong th:text="${pooledType}" style="text-transform:uppercase"></strong> today.
+        </div>
+        <a href="/home" class="back-link">← Back to Home</a>
+    </div>
+    
+    <!-- Food Not Available -->
+    <div th:if="${!alreadyPooled && !menu.foodAvailable}" class="status-card unavailable">
+        <div class="status-icon">🚫</div>
+        <div class="status-title">No Food Today</div>
+        <div class="status-desc">Food is not available today. Check back tomorrow!</div>
+        <a href="/home" class="back-link">← Back to Home</a>
+    </div>
+    
+    <!-- Pool Not Open -->
+    <div th:if="${!alreadyPooled && menu.foodAvailable && !menu.poolOpen}" class="status-card closed">
+        <div class="status-icon">⏳</div>
+        <div class="status-title">Survey Not Started</div>
+        <div class="status-desc">Please wait for admin to start the food pool survey.</div>
+        <a href="/home" class="back-link">← Back to Home</a>
+    </div>
+    
+    <!-- Pool Open - Show Options -->
+    <div th:if="${!alreadyPooled && menu.foodAvailable && menu.poolOpen}">
+        <h2>Select Your Meal 🍽️</h2>
+        
+        <div id="message" class="message hidden"></div>
+        
+        <div class="food-options">
+            <!-- Veg Option -->
+            <div class="food-card" id="vegCard" 
+                 th:classappend="${!menu.vegAvailable} ? 'disabled'"
+                 onclick="selectFood('veg')">
+                <div class="food-icon">🥗</div>
+                <div class="food-label">Vegetarian</div>
+                <div th:if="${menu.vegAvailable}" class="food-status available">✓ Available</div>
+                <div th:unless="${menu.vegAvailable}" class="food-status unavailable">Not Available</div>
+                <div class="food-dishes" th:if="${menu.vegAvailable}">
+                    <span th:if="${#lists.isEmpty(menu.vegItems)}">Enjoy your meal! 🍽️</span>
+                    <span th:unless="${#lists.isEmpty(menu.vegItems)}" th:text="${#strings.listJoin(menu.vegItems, ', ')}"></span>
+                </div>
+            </div>
+            
+            <!-- Non-Veg Option -->
+            <div class="food-card" id="nonvegCard"
+                 th:classappend="${!menu.nonvegAvailable} ? 'disabled'"
+                 onclick="selectFood('nonveg')">
+                <div class="food-icon">🍗</div>
+                <div class="food-label">Non-Veg</div>
+                <div th:if="${menu.nonvegAvailable}" class="food-status available">✓ Available</div>
+                <div th:unless="${menu.nonvegAvailable}" class="food-status unavailable">Not Available</div>
+                <div class="food-dishes" th:if="${menu.nonvegAvailable}">
+                    <span th:if="${#lists.isEmpty(menu.nonvegItems)}">Enjoy your meal! 🍽️</span>
+                    <span th:unless="${#lists.isEmpty(menu.nonvegItems)}" th:text="${#strings.listJoin(menu.nonvegItems, ', ')}"></span>
+                </div>
+            </div>
+        </div>
+        
+        <button id="submitBtn" class="submit-btn" onclick="submitPool()" disabled>
+            Select a meal option
+        </button>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    let selectedFood = null;
+    const vegAvailable = [[${menu.vegAvailable}]];
+    const nonvegAvailable = [[${menu.nonvegAvailable}]];
+    
+    function selectFood(type) {
+        if (type === 'veg' && !vegAvailable) return;
+        if (type === 'nonveg' && !nonvegAvailable) return;
+        
+        selectedFood = type;
+        
+        document.querySelectorAll('.food-card').forEach(c => c.classList.remove('selected'));
+        document.getElementById(type + 'Card').classList.add('selected');
+        
+        const btn = document.getElementById('submitBtn');
+        btn.disabled = false;
+        btn.textContent = 'Register for ' + (type === 'veg' ? 'Vegetarian 🥗' : 'Non-Veg 🍗');
+    }
+    
+    async function submitPool() {
+        if (!selectedFood) return;
+        
+        const btn = document.getElementById('submitBtn');
+        btn.disabled = true;
+        btn.textContent = 'Registering...';
+        
+        try {
+            const res = await fetch('/api/pool', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({foodType: selectedFood})
+            });
+            
+            const data = await res.json();
+            const msg = document.getElementById('message');
+            
+            if (data.success) {
+                msg.className = 'message success';
+                msg.textContent = '✅ ' + data.message;
+                msg.classList.remove('hidden');
+                setTimeout(() => window.location.href = '/home', 1500);
+            } else {
+                msg.className = 'message error';
+                msg.textContent = '❌ ' + data.error;
+                msg.classList.remove('hidden');
+                btn.disabled = false;
+                btn.textContent = 'Try Again';
+            }
+        } catch (e) {
+            alert('Error: ' + e.message);
+            btn.disabled = false;
+        }
+    }
+</script>
+</body>
+</html>

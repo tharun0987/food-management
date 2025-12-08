@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | Food Pool</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Poppins',sans-serif;background:#0f0f1a;min-height:100vh;color:#fff}
+        .header{background:linear-gradient(135deg,#1a1a2e,#16213e);padding:15px 20px;display:flex;justify-content:space-between;align-items:center}
+        .header-left{display:flex;align-items:center;gap:15px}
+        .back{color:#fff;text-decoration:none;font-size:1.5rem}
+        .title{font-size:1.1rem;font-weight:600}
+        .header-right{font-size:0.85rem;color:rgba(255,255,255,0.7)}
+        .container{max-width:900px;margin:0 auto;padding:20px}
+        h2{margin:20px 0 15px;font-size:1.1rem;color:rgba(255,255,255,0.8)}
+        .nav-links{display:flex;gap:10px;margin:20px 0;flex-wrap:wrap}
+        .nav-link{color:rgba(255,255,255,0.6);text-decoration:none;padding:8px 16px;border-radius:8px;background:rgba(255,255,255,0.05);font-size:0.85rem}
+        .nav-link:hover,.nav-link.active{background:rgba(233,69,96,0.2);color:#e94560}
+        
+        .pool-control{background:linear-gradient(135deg,rgba(233,69,96,0.2),rgba(255,107,107,0.1));border:2px solid #e94560;border-radius:16px;padding:25px;margin:20px 0;text-align:center}
+        .pool-control h3{margin-bottom:15px;font-size:1.2rem}
+        .pool-status{font-size:1.5rem;margin:15px 0}
+        .pool-status.open{color:#00ff88}
+        .pool-status.closed{color:#ffaa00}
+        .pool-status.unavailable{color:#ff5252}
+        .pool-btn{padding:15px 40px;border:none;border-radius:10px;font-size:1rem;font-weight:600;cursor:pointer;margin:10px 5px;transition:all 0.3s}
+        .pool-btn.start{background:#00ff88;color:#000}
+        .pool-btn.stop{background:#ff5252;color:#fff}
+        .pool-btn:hover{transform:scale(1.05)}
+        .pool-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+        
+        .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0}
+        .stat{background:rgba(255,255,255,0.05);border-radius:12px;padding:20px;text-align:center}
+        .stat-value{font-size:2rem;font-weight:700}
+        .stat-value.veg{color:#00ff88}
+        .stat-value.nonveg{color:#ff6b6b}
+        .stat-value.total{color:#00d9ff}
+        .stat-value.collected{color:#ffaa00}
+        .stat-label{font-size:0.75rem;color:rgba(255,255,255,0.5);margin-top:5px}
+        
+        .menu-card{background:rgba(255,255,255,0.05);border-radius:12px;padding:20px;margin:20px 0}
+        .menu-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.1)}
+        .menu-row:last-child{border:none}
+        .available{color:#00ff88}
+        .unavailable{color:#ff5252}
+        
+        .pool-list{background:rgba(255,255,255,0.05);border-radius:12px;overflow:hidden}
+        .pool-item{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;border-bottom:1px solid rgba(255,255,255,0.05)}
+        .pool-item:last-child{border:none}
+        .pool-name{font-weight:500;font-size:0.9rem}
+        .pool-id{font-size:0.75rem;color:rgba(255,255,255,0.5)}
+        .pool-type{padding:4px 12px;border-radius:20px;font-size:0.7rem;font-weight:600}
+        .pool-type.veg{background:rgba(0,255,136,0.2);color:#00ff88}
+        .pool-type.nonveg{background:rgba(255,107,107,0.2);color:#ff6b6b}
+        .btn-small{padding:8px 16px;border:none;border-radius:6px;font-size:0.8rem;cursor:pointer;background:#e94560;color:#fff}
+        .empty-state{padding:30px;text-align:center;color:rgba(255,255,255,0.5)}
+        
+        @media(max-width:600px){
+            .stats{grid-template-columns:repeat(2,1fr)}
+        }
+    </style>
+</head>
+<body>
+<div class="header">
+    <div class="header-left">
+        <a href="/home" class="back">←</a>
+        <span class="title">Admin Dashboard</span>
+    </div>
+    <div class="header-right" th:text="${todayDisplay}">Monday, Dec 08</div>
+</div>
+
+<div class="container">
+    <div class="nav-links">
+        <a href="/admin" class="nav-link active">Dashboard</a>
+        <a href="/admin/menu" class="nav-link">Menu Settings</a>
+        <a href="/admin/employees" class="nav-link">Manage Users</a>
+    </div>
+    
+    <!-- Pool Control -->
+    <div class="pool-control">
+        <h3>🍽️ Food Pool Survey</h3>
+        
+        <div th:if="${!foodAvailable}">
+            <div class="pool-status unavailable">❌ Food Not Available Today</div>
+            <p style="color:rgba(255,255,255,0.6);margin:10px 0">Configure menu first to enable food pool</p>
+            <a href="/admin/menu" class="pool-btn start" style="display:inline-block;text-decoration:none">Configure Menu</a>
+        </div>
+        
+        <div th:if="${foodAvailable}">
+            <div th:if="${poolOpen}" class="pool-status open">✅ Pool is OPEN</div>
+            <div th:unless="${poolOpen}" class="pool-status closed">⏸️ Pool is CLOSED</div>
+            
+            <div>
+                <button th:if="${!poolOpen}" class="pool-btn start" onclick="openPool()">▶️ Start Survey</button>
+                <button th:if="${poolOpen}" class="pool-btn stop" onclick="closePool()">⏹️ Stop Survey</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Stats -->
+    <h2>Today's Statistics</h2>
+    <div class="stats">
+        <div class="stat">
+            <div class="stat-value veg" th:text="${vegCount}">0</div>
+            <div class="stat-label">Veg</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value nonveg" th:text="${nonvegCount}">0</div>
+            <div class="stat-label">Non-Veg</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value total" th:text="${totalCount}">0</div>
+            <div class="stat-label">Total</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value collected" th:text="${collectedCount}">0</div>
+            <div class="stat-label">Collected</div>
+        </div>
+    </div>
+    
+    <!-- Menu Status -->
+    <h2>Today's Menu</h2>
+    <div class="menu-card">
+        <div class="menu-row">
+            <span>Food Available</span>
+            <span th:if="${foodAvailable}" class="available">✓ Yes</span>
+            <span th:unless="${foodAvailable}" class="unavailable">✗ No</span>
+        </div>
+        <div class="menu-row">
+            <span>🥗 Vegetarian</span>
+            <span th:if="${menu.vegAvailable}" class="available">✓ Available</span>
+            <span th:unless="${menu.vegAvailable}" class="unavailable">✗ Not Available</span>
+        </div>
+        <div class="menu-row">
+            <span>🍗 Non-Veg</span>
+            <span th:if="${menu.nonvegAvailable}" class="available">✓ Available</span>
+            <span th:unless="${menu.nonvegAvailable}" class="unavailable">✗ Not Available</span>
+        </div>
+        <div class="menu-row">
+            <span></span>
+            <a href="/admin/menu" class="btn-small">Edit Menu</a>
+        </div>
+    </div>
+    
+    <!-- Registrations -->
+    <h2>Today's Registrations</h2>
+    <div class="pool-list">
+        <div th:if="${#lists.isEmpty(pools)}" class="empty-state">No registrations yet</div>
+        <div th:each="pool : ${pools}" class="pool-item">
+            <div>
+                <div class="pool-name" th:text="${pool.employeeName}">Name</div>
+                <div class="pool-id" th:text="${pool.employeeId}">ID</div>
+            </div>
+            <span class="pool-type" th:classappend="${pool.foodType}" th:text="${pool.foodType}">veg</span>
+        </div>
+    </div>
+</div>
+
+<script>
+async function openPool() {
+    if (!confirm('Start the food pool survey? Users will be able to register.')) return;
+    const res = await fetch('/admin/pool/open', {method: 'POST'});
+    const data = await res.json();
+    if (data.success) location.reload();
+    else alert(data.error);
+}
+
+async function closePool() {
+    if (!confirm('Close the food pool? Users will not be able to register.')) return;
+    const res = await fetch('/admin/pool/close', {method: 'POST'});
+    const data = await res.json();
+    if (data.success) location.reload();
+    else alert(data.error);
+}
+</script>
+</body>
+</html>

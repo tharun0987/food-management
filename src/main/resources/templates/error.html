@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error | Encipher Food Pool</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Poppins',sans-serif;background:#0f0f1a;min-height:100vh;display:flex;align-items:center;justify-content:center;color:#fff}
+        .container{text-align:center;padding:40px}
+        .icon{font-size:80px;margin-bottom:20px}
+        h1{font-size:1.5rem;margin-bottom:10px;color:#ff5252}
+        p{color:rgba(255,255,255,0.6);margin-bottom:30px}
+        .btn{display:inline-block;padding:12px 30px;background:linear-gradient(135deg,#e94560,#ff6b6b);border-radius:8px;color:#fff;text-decoration:none;font-weight:600}
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="icon">⚠️</div>
+    <h1>Access Denied</h1>
+    <p th:text="${error}">You are not authorized to access this page.</p>
+    <a href="/" class="btn">Back to Login</a>
+</div>
+</body>
+</html>
+

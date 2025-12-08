@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scan QR | Encipher Food Pool</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Poppins',sans-serif;background:#0f0f1a;min-height:100vh;color:#fff}
+        .header{background:linear-gradient(135deg,#1a1a2e,#16213e);padding:15px 20px;display:flex;align-items:center;gap:15px}
+        .back{color:#fff;text-decoration:none;font-size:1.5rem}
+        .title{font-size:1.1rem;font-weight:600}
+        .container{max-width:500px;margin:0 auto;padding:20px}
+        .camera-box{background:#000;border-radius:16px;overflow:hidden;aspect-ratio:1;position:relative;margin:20px 0}
+        video{width:100%;height:100%;object-fit:cover}
+        .overlay{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center}
+        .scan-frame{width:70%;height:70%;border:3px solid #00ff88;border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,0.5)}
+        .status{padding:20px;border-radius:16px;text-align:center;margin:20px 0}
+        .status.info{background:rgba(0,217,255,0.1);border:1px solid #00d9ff}
+        .status.success{background:rgba(0,255,136,0.1);border:1px solid #00ff88}
+        .status.error{background:rgba(255,82,82,0.1);border:1px solid #ff5252}
+        .status.warning{background:rgba(255,170,0,0.1);border:1px solid #ffaa00}
+        .status h3{margin-bottom:10px}
+        .btn{display:block;width:100%;padding:16px;border:none;border-radius:12px;font-size:1rem;font-weight:600;cursor:pointer;margin:10px 0;text-decoration:none;text-align:center}
+        .btn-primary{background:linear-gradient(135deg,#00d9ff,#00ff88);color:#000}
+        .btn-secondary{background:rgba(255,255,255,0.1);color:#fff}
+        canvas{display:none}
+        .hidden{display:none}
+    </style>
+</head>
+<body>
+<div class="header">
+    <a href="/home" class="back">←</a>
+    <span class="title">Scan QR to Collect Food</span>
+</div>
+
+<div class="container">
+    <!-- Not Pooled -->
+    <div th:if="${!hasPooled}" class="status warning">
+        <h3>⚠️ Not Registered</h3>
+        <p>You haven't registered for food pool today.</p>
+        <a href="/pool" class="btn btn-primary" style="margin-top:15px">Register Now</a>
+    </div>
+    
+    <!-- Already Collected -->
+    <div th:if="${hasPooled && hasCollected}" class="status success">
+        <h3>✓ Food Collected</h3>
+        <p>You've already collected your <strong th:text="${pooledType}" style="text-transform:uppercase"></strong> meal today.</p>
+        <a href="/home" class="btn btn-secondary" style="margin-top:15px">Back to Home</a>
+    </div>
+    
+    <!-- Ready to Scan -->
+    <div th:if="${hasPooled && !hasCollected}" id="scanSection">
+        <div class="status info">
+            <p>Registered for: <strong th:text="${pooledType}" style="text-transform:uppercase"></strong></p>
+        </div>
+        
+        <div class="camera-box">
+            <video id="video" autoplay playsinline muted></video>
+            <div class="overlay"><div class="scan-frame"></div></div>
+        </div>
+        
+        <button onclick="startCamera()" class="btn btn-primary" id="startBtn">📷 Start Camera</button>
+        
+        <div id="result" class="status success hidden">
+            <h3>✓ Food Collected!</h3>
+            <p id="resultMsg"></p>
+        </div>
+    </div>
+    
+    <canvas id="canvas"></canvas>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas ? canvas.getContext('2d', {willReadFrequently: true}) : null;
+    let scanning = false;
+    
+    async function startCamera() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: {facingMode: 'environment'},
+                audio: false
+            });
+            video.srcObject = stream;
+            video.onloadedmetadata = () => {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                document.getElementById('startBtn').textContent = '🔍 Scanning...';
+                scanning = true;
+                scan();
+            };
+        } catch (e) {
+            alert('Camera error: ' + e.message);
+        }
+    }
+    
+    function scan() {
+        if (!scanning) return;
+        ctx.drawImage(video, 0, 0);
+        const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(img.data, img.width, img.height);
+        
+        if (code && code.data) {
+            scanning = false;
+            video.srcObject.getTracks().forEach(t => t.stop());
+            verifyScan(code.data);
+        } else {
+            requestAnimationFrame(scan);
+        }
+    }
+    
+    async function verifyScan(qrData) {
+        document.getElementById('startBtn').textContent = 'Verifying...';
+        
+        try {
+            const res = await fetch('/api/scan', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({qrData: qrData})
+            });
+            
+            const data = await res.json();
+            
+            if (data.success) {
+                document.getElementById('scanSection').querySelector('.camera-box').style.display = 'none';
+                document.getElementById('startBtn').style.display = 'none';
+                document.getElementById('resultMsg').textContent = data.message;
+                document.getElementById('result').classList.remove('hidden');
+            } else {
+                alert(data.error);
+                document.getElementById('startBtn').textContent = '📷 Try Again';
+            }
+        } catch (e) {
+            alert('Error: ' + e.message);
+        }
+    }
+</script>
+</body>
+</html>
+

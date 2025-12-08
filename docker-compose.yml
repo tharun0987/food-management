@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  food-pool-app:
+    build: .
+    container_name: encipher-food-pool
+    ports:
+      - "8888:8888"
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb+srv://tharun_db_user:XplRhL6HZNdfwRol@encipherfoodmanagement.lpwcfvq.mongodb.net/food_management?retryWrites=true&w=majority
+      - ZOHO_CLIENT_ID=${ZOHO_CLIENT_ID:-1000.V7Y8R94HK9C4BIC8PW9PL0XWLJTTCP}
+      - ZOHO_CLIENT_SECRET=${ZOHO_CLIENT_SECRET:-22aa87c8c7ec7967871f901a903e6d03588a80cf6f}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8888/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
