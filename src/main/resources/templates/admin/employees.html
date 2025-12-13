@@ -20,7 +20,6 @@
         .nav-link:hover,.nav-link.active{background:rgba(233,69,96,0.2);color:#e94560}
         
         .card{background:rgba(255,255,255,0.05);border-radius:16px;padding:20px;margin:15px 0}
-        .card-title{font-size:0.9rem;color:rgba(255,255,255,0.6);margin-bottom:15px}
         
         .roles-info{background:rgba(0,217,255,0.1);border:1px solid rgba(0,217,255,0.3);border-radius:12px;padding:15px;margin:15px 0;font-size:0.85rem}
         .roles-info h4{color:#00d9ff;margin-bottom:10px}
@@ -40,8 +39,7 @@
         .upload-btn:hover{background:rgba(255,255,255,0.2)}
         
         .role-section{margin:20px 0}
-        .role-header{display:flex;align-items:center;gap:10px;margin-bottom:10px}
-        .role-chips{display:flex;flex-wrap:wrap;gap:10px}
+        .role-chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
         .role-chip{padding:10px 15px;border-radius:20px;font-size:0.85rem;display:flex;align-items:center;gap:10px}
         .role-chip.admin{background:rgba(233,69,96,0.2);border:1px solid #e94560}
         .role-chip.contributor{background:rgba(255,170,0,0.2);border:1px solid #ffaa00}
@@ -60,7 +58,6 @@
         .badge{padding:3px 8px;border-radius:10px;font-size:0.65rem;font-weight:600}
         .badge.admin{background:rgba(233,69,96,0.2);color:#e94560}
         .badge.contributor{background:rgba(255,170,0,0.2);color:#ffaa00}
-        .badge.user{background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.6)}
         .user-actions{display:flex;gap:8px;align-items:center}
         .role-select{padding:6px 10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.2);border-radius:6px;color:#fff;font-size:0.8rem;cursor:pointer}
         .role-select option{background:#1a1a2e}
@@ -104,22 +101,21 @@
         <ul>
             <li><span class="role-name">ADMINISTRATOR</span> - Full access: manage users, menu, pool, roles</li>
             <li><span class="role-name">CONTRIBUTOR</span> - Can update menu and start/stop pool only</li>
-            <li><span class="role-name">USER</span> - Regular employee (register & collect food)</li>
+            <li><span class="role-name">USER</span> - Regular employee (register &amp; collect food)</li>
         </ul>
     </div>
     
     <!-- Administrators -->
     <div class="role-section">
-        <div class="role-header">
-            <h2>👑 Administrators <span class="count" th:text="'(' + ${#lists.size(administrators)} + ')'"></span></h2>
-        </div>
+        <h2>👑 Administrators <span class="count" th:text="'(' + ${#lists.size(administrators)} + ')'"></span></h2>
         <div class="role-chips">
-            <div th:each="admin : ${administrators}" class="role-chip admin">
+            <div th:each="admin : ${administrators}" class="role-chip admin"
+                 th:data-id="${admin.employeeId}">
                 <div>
                     <span class="name" th:text="${admin.name}">Name</span>
                     <span class="id" th:text="'(' + ${admin.employeeId} + ')'"></span>
                 </div>
-                <span class="remove" th:onclick="'changeRole(\'' + ${admin.employeeId} + '\', \'USER\')'" title="Remove role">✕</span>
+                <span class="remove" onclick="removeRole(this)" title="Remove role">✕</span>
             </div>
             <div th:if="${#lists.isEmpty(administrators)}" class="empty-state">No administrators</div>
         </div>
@@ -127,16 +123,15 @@
     
     <!-- Contributors -->
     <div class="role-section">
-        <div class="role-header">
-            <h2>✏️ Contributors <span class="count" th:text="'(' + ${#lists.size(contributors)} + ')'"></span></h2>
-        </div>
+        <h2>✏️ Contributors <span class="count" th:text="'(' + ${#lists.size(contributors)} + ')'"></span></h2>
         <div class="role-chips">
-            <div th:each="contrib : ${contributors}" class="role-chip contributor">
+            <div th:each="contrib : ${contributors}" class="role-chip contributor"
+                 th:data-id="${contrib.employeeId}">
                 <div>
                     <span class="name" th:text="${contrib.name}">Name</span>
                     <span class="id" th:text="'(' + ${contrib.employeeId} + ')'"></span>
                 </div>
-                <span class="remove" th:onclick="'changeRole(\'' + ${contrib.employeeId} + '\', \'USER\')'" title="Remove role">✕</span>
+                <span class="remove" onclick="removeRole(this)" title="Remove role">✕</span>
             </div>
             <div th:if="${#lists.isEmpty(contributors)}" class="empty-state">No contributors</div>
         </div>
@@ -169,7 +164,8 @@
     <!-- Employee List -->
     <h2>👥 All Employees <span class="count" th:text="'(' + ${#lists.size(employees)} + ')'"></span></h2>
     <div class="user-list">
-        <div th:each="emp : ${employees}" class="user-item">
+        <div th:each="emp : ${employees}" class="user-item" 
+             th:data-id="${emp.employeeId}" th:data-name="${emp.name}">
             <div class="user-info">
                 <div class="user-name">
                     <span th:text="${emp.name}">Name</span>
@@ -180,16 +176,12 @@
                 <div th:if="${emp.email}" class="user-email" th:text="${emp.email}">email</div>
             </div>
             <div class="user-actions">
-                <select class="role-select" th:id="'role-' + ${emp.employeeId}" 
-                        th:onchange="'changeRole(\'' + ${emp.employeeId} + '\', this.value)'">
+                <select class="role-select" onchange="changeRoleFromSelect(this)">
                     <option value="USER" th:selected="${emp.role == null || emp.role == 'USER'}">User</option>
                     <option value="CONTRIBUTOR" th:selected="${emp.role == 'CONTRIBUTOR'}">Contributor</option>
                     <option value="ADMINISTRATOR" th:selected="${emp.role == 'ADMINISTRATOR'}">Administrator</option>
                 </select>
-                <button class="btn-action danger" 
-                        th:onclick="'deleteEmployee(\'' + ${emp.employeeId} + '\', \'' + ${emp.name} + '\')'">
-                    Remove
-                </button>
+                <button class="btn-action danger" onclick="deleteEmployee(this)">Remove</button>
             </div>
         </div>
     </div>
@@ -268,8 +260,25 @@ async function changeRole(employeeId, role) {
     }
 }
 
-async function deleteEmployee(employeeId, name) {
+function changeRoleFromSelect(select) {
+    const employeeId = select.closest('.user-item').dataset.id;
+    changeRole(employeeId, select.value);
+}
+
+function removeRole(btn) {
+    const employeeId = btn.closest('.role-chip').dataset.id;
+    if (confirm('Remove admin/contributor role from this user?')) {
+        changeRole(employeeId, 'USER');
+    }
+}
+
+async function deleteEmployee(btn) {
+    const item = btn.closest('.user-item');
+    const employeeId = item.dataset.id;
+    const name = item.dataset.name;
+    
     if (!confirm('Remove ' + name + ' from the system?')) return;
+    
     try {
         await fetch('/admin/employees/' + employeeId, {method: 'DELETE'});
         location.reload();

@@ -1,7 +1,5 @@
 package com.encipher.foodpool.service;
 
-import com.encipher.foodpool.model.Employee;
-import com.encipher.foodpool.repository.EmployeeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,7 +8,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @Service
@@ -18,11 +15,13 @@ import java.util.Map;
 @Slf4j
 public class CliqNotificationService {
     
-    private final EmployeeRepository employeeRepository;
     private final RestTemplate restTemplate = new RestTemplate();
     
-    @Value("${app.cliq.webhook-url:}")
-    private String cliqWebhookUrl;
+    @Value("${app.cliq.channel-url:https://cliq.zoho.in/company/60023432224/api/v2/channelsbyname/foodtest/message}")
+    private String cliqChannelUrl;
+    
+    @Value("${app.cliq.api-token:1001.df6a6e9f3491348c1dc1ff8f876f655b.ac81841f303707e3ab74160a50d8d240}")
+    private String cliqApiToken;
     
     @Value("${app.base-url:http://food.management.encipherhealth.com}")
     private String appBaseUrl;
@@ -91,57 +90,56 @@ public class CliqNotificationService {
     }
     
     /**
-     * Send message via Cliq webhook
+     * Send message to Cliq channel
      */
     private void sendNotification(String message) {
-        if (cliqWebhookUrl == null || cliqWebhookUrl.isEmpty()) {
-            log.warn("Cliq webhook URL not configured. Message not sent: {}", message);
+        if (cliqApiToken == null || cliqApiToken.isEmpty()) {
+            log.warn("Cliq API token not configured. Message not sent.");
             return;
         }
         
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("Authorization", "Zoho-oauthtoken " + cliqApiToken);
             
-            // Zoho Cliq webhook expects "text" field for the message
+            // Zoho Cliq channel message format
             Map<String, Object> payload = new HashMap<>();
             payload.put("text", message);
             
-            // Optional: Add bot name
-            Map<String, Object> bot = new HashMap<>();
-            bot.put("name", "Food Pool Bot");
-            bot.put("image", "https://img.icons8.com/color/96/meal.png");
-            payload.put("bot", bot);
+            // Optional: Add card for better formatting
+            Map<String, Object> card = new HashMap<>();
+            card.put("title", "🍽️ Food Pool Bot");
+            card.put("theme", "modern-inline");
+            payload.put("card", card);
             
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
             
-            log.info("Sending Cliq notification to webhook...");
-            ResponseEntity<String> response = restTemplate.postForEntity(cliqWebhookUrl, request, String.class);
+            log.info("Sending Cliq notification to channel: foodtest");
+            ResponseEntity<String> response = restTemplate.postForEntity(cliqChannelUrl, request, String.class);
             
             if (response.getStatusCode().is2xxSuccessful()) {
-                log.info("✓ Cliq notification sent successfully");
+                log.info("✓ Cliq notification sent successfully to channel");
             } else {
                 log.error("✗ Cliq notification failed: {} - {}", response.getStatusCode(), response.getBody());
             }
         } catch (Exception e) {
-            log.error("✗ Error sending Cliq notification: {}", e.getMessage(), e);
+            log.error("✗ Error sending Cliq notification: {}", e.getMessage());
+            // Log full error for debugging
+            log.debug("Full error: ", e);
         }
     }
     
     /**
-     * Test the webhook connection
+     * Test the notification
      */
-    public boolean testWebhook() {
-        if (cliqWebhookUrl == null || cliqWebhookUrl.isEmpty()) {
-            return false;
-        }
-        
+    public boolean testNotification() {
         try {
-            String testMessage = "🔔 *Food Pool Bot Connected!*\n\nThis is a test message to confirm the webhook is working.";
+            String testMessage = "🔔 *Food Pool Bot Connected!*\n\nThis is a test message to confirm notifications are working.";
             sendNotification(testMessage);
             return true;
         } catch (Exception e) {
-            log.error("Webhook test failed: {}", e.getMessage());
+            log.error("Test notification failed: {}", e.getMessage());
             return false;
         }
     }
