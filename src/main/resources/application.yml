@@ -36,7 +36,7 @@ spring:
 # App configuration
 app:
   admin-emails: admin@encipherhealth.com,hr@encipherhealth.com
-  base-url: http://20.102.40.235:8888
+  base-url: http://food.management.encipherhealth.com
   cliq:
     # Configure Zoho Cliq incoming webhook URL for notifications
     # Create webhook at: Cliq > Bots > Incoming Webhooks
