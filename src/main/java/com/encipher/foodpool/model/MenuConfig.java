@@ -21,7 +21,9 @@ public class MenuConfig {
     private String id;
     
     @Indexed(unique = true)
-    private LocalDate date;
+    private LocalDate date;  // Date when pool is open for voting
+    
+    private LocalDate foodDate;  // Date when food will be served (usually next day)
     
     // Is food available today at all?
     private boolean foodAvailable;

@@ -27,6 +27,7 @@ public class AdminController {
     
     private final EmployeeService employeeService;
     private final FoodPoolService foodPoolService;
+    private final CliqNotificationService cliqNotificationService;
     
     private void addCommonAttributes(OAuth2User user, Model model) {
         model.addAttribute("employeeName", user.getAttribute("employeeName"));
@@ -52,6 +53,10 @@ public class AdminController {
         model.addAttribute("poolOpen", menu.isPoolOpen());
         model.addAttribute("foodAvailable", menu.isFoodAvailable());
         
+        // Food date (when food will be served)
+        LocalDate foodDate = menu.getFoodDate() != null ? menu.getFoodDate() : LocalDate.now().plusDays(1);
+        model.addAttribute("foodDate", foodDate.format(DateTimeFormatter.ofPattern("EEEE, MMM dd")));
+        
         // Pool time info
         if (menu.isPoolOpen() && menu.getPoolAutoCloseAt() != null) {
             long minutesLeft = ChronoUnit.MINUTES.between(LocalDateTime.now(), menu.getPoolAutoCloseAt());
@@ -66,13 +71,23 @@ public class AdminController {
         model.addAttribute("totalCount", stats.get("total"));
         model.addAttribute("collectedCount", stats.get("collected"));
         
-        // Calculate consumption percentage
+        // Calculate percentages for charts
         long total = stats.get("total");
         long collected = stats.get("collected");
+        long notCollected = total - collected;
         model.addAttribute("consumptionPercent", total > 0 ? (collected * 100 / total) : 0);
+        model.addAttribute("notCollectedCount", notCollected);
+        
+        // Total employees and participation stats
+        long totalEmployees = employeeService.getAllActiveEmployees().size();
+        long notVoted = totalEmployees - total;
+        model.addAttribute("totalEmployees", totalEmployees);
+        model.addAttribute("notVotedCount", notVoted);
+        model.addAttribute("participationPercent", totalEmployees > 0 ? (total * 100 / totalEmployees) : 0);
         
         // Today's pools
         model.addAttribute("pools", foodPoolService.getTodayPools());
+        model.addAttribute("scans", foodPoolService.getTodayScans());
         
         model.addAttribute("today", LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
         model.addAttribute("todayDisplay", LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, MMM dd")));
@@ -99,14 +114,24 @@ public class AdminController {
                 }
             }
             
+            // Get food date (default to tomorrow)
+            LocalDate foodDate = LocalDate.now().plusDays(1);
+            if (body != null && body.containsKey("foodDate")) {
+                String foodDateStr = (String) body.get("foodDate");
+                if (foodDateStr != null && !foodDateStr.isEmpty()) {
+                    foodDate = LocalDate.parse(foodDateStr);
+                }
+            }
+            
             // Validate duration (1-24 hours)
             if (duration < 1) duration = 1;
             if (duration > 24) duration = 24;
             
-            foodPoolService.openPool(email, duration);
+            foodPoolService.openPool(email, duration, foodDate);
             return ResponseEntity.ok(Map.of(
                     "success", true, 
-                    "message", "Pool opened for " + duration + " hours! Users can now register."
+                    "message", "Pool opened for " + duration + " hours! Food will be served on " + 
+                              foodDate.format(DateTimeFormatter.ofPattern("MMM dd"))
             ));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -125,12 +150,75 @@ public class AdminController {
         }
     }
     
+    // ============== NOTIFICATION ENDPOINTS ==============
+    
+    @PostMapping("/notify/participate")
+    @ResponseBody
+    public ResponseEntity<?> sendParticipateReminder(@AuthenticationPrincipal OAuth2User user) {
+        try {
+            MenuConfig menu = foodPoolService.getTodayMenu();
+            LocalDate foodDate = menu.getFoodDate() != null ? menu.getFoodDate() : LocalDate.now().plusDays(1);
+            cliqNotificationService.sendParticipateReminder(foodDate);
+            return ResponseEntity.ok(Map.of("success", true, "message", "Reminder sent to participate in pool!"));
+        } catch (Exception e) {
+            log.error("Failed to send participate reminder: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("error", "Failed to send notification: " + e.getMessage()));
+        }
+    }
+    
+    @PostMapping("/notify/eat")
+    @ResponseBody
+    public ResponseEntity<?> sendEatReminder(@AuthenticationPrincipal OAuth2User user) {
+        try {
+            Map<String, Long> stats = foodPoolService.getTodayStats();
+            cliqNotificationService.sendEatReminder(stats.get("total") - stats.get("collected"));
+            return ResponseEntity.ok(Map.of("success", true, "message", "Reminder sent to collect food!"));
+        } catch (Exception e) {
+            log.error("Failed to send eat reminder: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("error", "Failed to send notification: " + e.getMessage()));
+        }
+    }
+    
+    @PostMapping("/notify/lastcall")
+    @ResponseBody
+    public ResponseEntity<?> sendLastCallReminder(@AuthenticationPrincipal OAuth2User user) {
+        try {
+            cliqNotificationService.sendLastCallReminder();
+            return ResponseEntity.ok(Map.of("success", true, "message", "Last call reminder sent!"));
+        } catch (Exception e) {
+            log.error("Failed to send last call reminder: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("error", "Failed to send notification: " + e.getMessage()));
+        }
+    }
+    
+    @PostMapping("/notify/custom")
+    @ResponseBody
+    public ResponseEntity<?> sendCustomNotification(
+            @AuthenticationPrincipal OAuth2User user,
+            @RequestBody Map<String, String> body) {
+        try {
+            String message = body.get("message");
+            if (message == null || message.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Message cannot be empty"));
+            }
+            cliqNotificationService.sendCustomNotification(message);
+            return ResponseEntity.ok(Map.of("success", true, "message", "Custom notification sent!"));
+        } catch (Exception e) {
+            log.error("Failed to send custom notification: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("error", "Failed to send notification: " + e.getMessage()));
+        }
+    }
+    
+    // ============== MENU ==============
+    
     @GetMapping("/menu")
     public String menuPage(@AuthenticationPrincipal OAuth2User user, Model model) {
         addCommonAttributes(user, model);
         model.addAttribute("menu", foodPoolService.getTodayMenu());
         model.addAttribute("today", LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
         model.addAttribute("todayDisplay", LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, MMM dd")));
+        model.addAttribute("tomorrow", LocalDate.now().plusDays(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+        model.addAttribute("tomorrowDisplay", LocalDate.now().plusDays(1).format(DateTimeFormatter.ofPattern("EEEE, MMM dd")));
         return "admin/menu";
     }
     

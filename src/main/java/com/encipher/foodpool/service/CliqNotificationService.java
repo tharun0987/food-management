@@ -7,6 +7,8 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -26,17 +28,27 @@ public class CliqNotificationService {
     @Value("${app.base-url:http://food.management.encipherhealth.com}")
     private String appBaseUrl;
     
+    // ============== AUTO NOTIFICATIONS ==============
+    
     /**
      * Send notification when pool starts
      */
-    public void notifyPoolStarted(int durationHours) {
+    public void notifyPoolStarted(int durationHours, LocalDate foodDate) {
+        String dateStr = foodDate.format(DateTimeFormatter.ofPattern("EEEE, MMM dd"));
         String message = "🍽️ *Food Pool Survey Started!*\n\n" +
-                "The food pool is now open for registration.\n" +
-                "⏱️ Duration: *" + durationHours + " hours*\n\n" +
-                "👉 Register Now: " + appBaseUrl + "/pool\n\n" +
-                "Don't miss out on your meal! 🥗🍗";
+                "Register now for food on *" + dateStr + "*\n" +
+                "⏱️ Survey closes in: *" + durationHours + " hours*\n\n" +
+                "👉 Vote Now: " + appBaseUrl + "/pool\n\n" +
+                "Don't miss out! 🥗🍗";
         
         sendNotification(message);
+    }
+    
+    /**
+     * Send notification when pool starts (overload for backward compatibility)
+     */
+    public void notifyPoolStarted(int durationHours) {
+        notifyPoolStarted(durationHours, LocalDate.now().plusDays(1));
     }
     
     /**
@@ -44,9 +56,9 @@ public class CliqNotificationService {
      */
     public void notifyPoolClosingSoon() {
         String message = "⏰ *Food Pool Closing Soon!*\n\n" +
-                "The food pool will close in *1 hour*.\n\n" +
-                "If you haven't registered yet, do it now!\n" +
-                "👉 Register: " + appBaseUrl + "/pool";
+                "Only *1 hour left* to register for tomorrow's food!\n\n" +
+                "If you haven't voted yet, do it now!\n" +
+                "👉 Vote: " + appBaseUrl + "/pool";
         
         sendNotification(message);
     }
@@ -55,10 +67,10 @@ public class CliqNotificationService {
      * Send notification when 50% food consumed
      */
     public void notify50PercentConsumed(long collected, long total) {
-        String message = "🍽️ *Food Update - 50% Consumed*\n\n" +
+        String message = "🍽️ *Food Update - 50% Collected*\n\n" +
                 "Half of the food has been collected!\n" +
                 "📊 " + collected + "/" + total + " meals collected\n\n" +
-                "If you haven't had your lunch yet, *go and have it soon!* 🏃‍♂️";
+                "If you haven't had your meal yet, *come and get it soon!* 🏃‍♂️";
         
         sendNotification(message);
     }
@@ -67,10 +79,10 @@ public class CliqNotificationService {
      * Send notification when 70% food consumed
      */
     public void notify70PercentConsumed(long collected, long total) {
-        String message = "⚠️ *Food is About to Finish!*\n\n" +
+        String message = "⚠️ *Food is Almost Finished!*\n\n" +
                 "70% of food has been collected!\n" +
                 "📊 " + collected + "/" + total + " meals collected\n\n" +
-                "*Go and have your lunch NOW!* 🏃‍♂️💨";
+                "*Come and collect your food NOW!* 🏃‍♂️💨";
         
         sendNotification(message);
     }
@@ -80,14 +92,66 @@ public class CliqNotificationService {
      */
     public void notifyPoolClosed(long vegCount, long nonvegCount) {
         String message = "🔒 *Food Pool Closed*\n\n" +
-                "Today's food pool has ended.\n\n" +
+                "Voting has ended.\n\n" +
                 "📊 Final Count:\n" +
                 "🥗 Veg: " + vegCount + "\n" +
                 "🍗 Non-Veg: " + nonvegCount + "\n" +
-                "📌 Total: " + (vegCount + nonvegCount);
+                "📌 Total: " + (vegCount + nonvegCount) + "\n\n" +
+                "Food will be served soon! 🍽️";
         
         sendNotification(message);
     }
+    
+    // ============== MANUAL NOTIFICATIONS ==============
+    
+    /**
+     * Send reminder to participate in pool
+     */
+    public void sendParticipateReminder(LocalDate foodDate) {
+        String dateStr = foodDate.format(DateTimeFormatter.ofPattern("EEEE, MMM dd"));
+        String message = "📢 *Reminder: Vote for Your Meal!*\n\n" +
+                "Don't forget to register for food on *" + dateStr + "*\n\n" +
+                "🥗 Veg or 🍗 Non-Veg - Make your choice!\n\n" +
+                "👉 Vote Now: " + appBaseUrl + "/pool\n\n" +
+                "Survey closes soon! ⏰";
+        
+        sendNotification(message);
+    }
+    
+    /**
+     * Send reminder to come and eat
+     */
+    public void sendEatReminder(long remaining) {
+        String message = "🍽️ *Food Has Arrived!*\n\n" +
+                "Your meal is ready and waiting!\n" +
+                "📊 " + remaining + " meals still to be collected\n\n" +
+                "🏃‍♂️ *Come to the cafeteria and collect your food!*\n\n" +
+                "Scan QR: " + appBaseUrl + "/scan";
+        
+        sendNotification(message);
+    }
+    
+    /**
+     * Send last call reminder (few minutes before closing)
+     */
+    public void sendLastCallReminder() {
+        String message = "🚨 *LAST CALL - Pool Closing Soon!*\n\n" +
+                "⏰ Only a few minutes left to vote!\n\n" +
+                "If you want food tomorrow, *VOTE NOW!*\n\n" +
+                "👉 " + appBaseUrl + "/pool";
+        
+        sendNotification(message);
+    }
+    
+    /**
+     * Send custom notification
+     */
+    public void sendCustomNotification(String customMessage) {
+        String message = "📢 *Food Pool Announcement*\n\n" + customMessage;
+        sendNotification(message);
+    }
+    
+    // ============== CORE SEND METHOD ==============
     
     /**
      * Send message to Cliq channel
@@ -107,40 +171,19 @@ public class CliqNotificationService {
             Map<String, Object> payload = new HashMap<>();
             payload.put("text", message);
             
-            // Optional: Add card for better formatting
-            Map<String, Object> card = new HashMap<>();
-            card.put("title", "🍽️ Food Pool Bot");
-            card.put("theme", "modern-inline");
-            payload.put("card", card);
-            
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
             
-            log.info("Sending Cliq notification to channel: foodtest");
+            log.info("Sending Cliq notification to channel...");
             ResponseEntity<String> response = restTemplate.postForEntity(cliqChannelUrl, request, String.class);
             
             if (response.getStatusCode().is2xxSuccessful()) {
-                log.info("✓ Cliq notification sent successfully to channel");
+                log.info("✓ Cliq notification sent successfully");
             } else {
                 log.error("✗ Cliq notification failed: {} - {}", response.getStatusCode(), response.getBody());
             }
         } catch (Exception e) {
             log.error("✗ Error sending Cliq notification: {}", e.getMessage());
-            // Log full error for debugging
-            log.debug("Full error: ", e);
-        }
-    }
-    
-    /**
-     * Test the notification
-     */
-    public boolean testNotification() {
-        try {
-            String testMessage = "🔔 *Food Pool Bot Connected!*\n\nThis is a test message to confirm notifications are working.";
-            sendNotification(testMessage);
-            return true;
-        } catch (Exception e) {
-            log.error("Test notification failed: {}", e.getMessage());
-            return false;
+            throw new RuntimeException("Failed to send notification: " + e.getMessage());
         }
     }
 }

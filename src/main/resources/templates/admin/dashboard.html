@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard | Food Pool</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
         body{font-family:'Poppins',sans-serif;background:#0f0f1a;min-height:100vh;color:#fff}
@@ -14,8 +15,8 @@
         .title{font-size:1.1rem;font-weight:600}
         .header-right{font-size:0.85rem;color:rgba(255,255,255,0.7)}
         .role-badge{background:rgba(233,69,96,0.3);color:#e94560;padding:3px 10px;border-radius:12px;font-size:0.7rem;margin-left:10px}
-        .container{max-width:900px;margin:0 auto;padding:20px}
-        h2{margin:20px 0 15px;font-size:1.1rem;color:rgba(255,255,255,0.8)}
+        .container{max-width:1000px;margin:0 auto;padding:20px}
+        h2{margin:25px 0 15px;font-size:1.1rem;color:rgba(255,255,255,0.8)}
         .nav-links{display:flex;gap:10px;margin:20px 0;flex-wrap:wrap}
         .nav-link{color:rgba(255,255,255,0.6);text-decoration:none;padding:8px 16px;border-radius:8px;background:rgba(255,255,255,0.05);font-size:0.85rem}
         .nav-link:hover,.nav-link.active{background:rgba(233,69,96,0.2);color:#e94560}
@@ -29,17 +30,33 @@
         .pool-status.unavailable{color:#ff5252}
         .pool-timer{background:rgba(0,0,0,0.3);padding:12px 20px;border-radius:10px;margin:15px 0;font-size:0.9rem}
         .pool-timer .time{font-size:1.3rem;font-weight:700;color:#00d9ff}
+        .food-date-info{background:rgba(0,217,255,0.1);padding:10px 15px;border-radius:8px;margin:10px 0;font-size:0.9rem}
+        .food-date-info strong{color:#00d9ff}
         
-        .duration-selector{margin:15px 0}
-        .duration-selector label{display:block;margin-bottom:8px;font-size:0.9rem;color:rgba(255,255,255,0.7)}
-        .duration-selector select{padding:10px 15px;border-radius:8px;border:2px solid rgba(255,255,255,0.2);background:#1a1a2e;color:#fff;font-size:1rem;width:200px;cursor:pointer}
-        .duration-selector select:focus{outline:none;border-color:#e94560}
+        .config-row{display:flex;gap:15px;justify-content:center;align-items:center;margin:15px 0;flex-wrap:wrap}
+        .config-row label{font-size:0.9rem;color:rgba(255,255,255,0.7)}
+        .config-row select,.config-row input{padding:10px 15px;border-radius:8px;border:2px solid rgba(255,255,255,0.2);background:#1a1a2e;color:#fff;font-size:0.9rem;cursor:pointer}
+        .config-row select:focus,.config-row input:focus{outline:none;border-color:#e94560}
         
-        .pool-btn{padding:15px 40px;border:none;border-radius:10px;font-size:1rem;font-weight:600;cursor:pointer;margin:10px 5px;transition:all 0.3s}
+        .pool-btn{padding:15px 30px;border:none;border-radius:10px;font-size:1rem;font-weight:600;cursor:pointer;margin:8px;transition:all 0.3s}
         .pool-btn.start{background:#00ff88;color:#000}
         .pool-btn.stop{background:#ff5252;color:#fff}
         .pool-btn:hover{transform:scale(1.05)}
         .pool-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+        
+        /* Notification Buttons */
+        .notify-section{background:rgba(255,255,255,0.05);border-radius:12px;padding:20px;margin:20px 0}
+        .notify-section h3{font-size:1rem;margin-bottom:15px;color:rgba(255,255,255,0.8)}
+        .notify-buttons{display:flex;flex-wrap:wrap;gap:10px}
+        .notify-btn{padding:10px 18px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;background:transparent;color:#fff;font-size:0.85rem;cursor:pointer;transition:all 0.3s;display:flex;align-items:center;gap:8px}
+        .notify-btn:hover{background:rgba(255,255,255,0.1);border-color:#00d9ff}
+        .notify-btn.primary{background:linear-gradient(135deg,#00d9ff,#00ff88);color:#000;border:none}
+        
+        /* Charts Section */
+        .charts-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;margin:20px 0}
+        .chart-card{background:rgba(255,255,255,0.05);border-radius:12px;padding:20px}
+        .chart-card h4{font-size:0.9rem;margin-bottom:15px;color:rgba(255,255,255,0.7)}
+        .chart-container{position:relative;height:200px}
         
         .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0}
         .stat{background:rgba(255,255,255,0.05);border-radius:12px;padding:20px;text-align:center}
@@ -50,17 +67,7 @@
         .stat-value.collected{color:#ffaa00}
         .stat-label{font-size:0.75rem;color:rgba(255,255,255,0.5);margin-top:5px}
         
-        .consumption-bar{background:rgba(255,255,255,0.1);border-radius:10px;height:20px;margin:15px 0;overflow:hidden}
-        .consumption-fill{height:100%;background:linear-gradient(90deg,#00ff88,#00d9ff);transition:width 0.5s}
-        .consumption-text{text-align:center;font-size:0.85rem;margin-top:5px;color:rgba(255,255,255,0.7)}
-        
-        .menu-card{background:rgba(255,255,255,0.05);border-radius:12px;padding:20px;margin:20px 0}
-        .menu-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.1)}
-        .menu-row:last-child{border:none}
-        .available{color:#00ff88}
-        .unavailable{color:#ff5252}
-        
-        .pool-list{background:rgba(255,255,255,0.05);border-radius:12px;overflow:hidden}
+        .pool-list{background:rgba(255,255,255,0.05);border-radius:12px;overflow:hidden;max-height:400px;overflow-y:auto}
         .pool-item{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;border-bottom:1px solid rgba(255,255,255,0.05)}
         .pool-item:last-child{border:none}
         .pool-name{font-weight:500;font-size:0.9rem}
@@ -68,11 +75,20 @@
         .pool-type{padding:4px 12px;border-radius:20px;font-size:0.7rem;font-weight:600}
         .pool-type.veg{background:rgba(0,255,136,0.2);color:#00ff88}
         .pool-type.nonveg{background:rgba(255,107,107,0.2);color:#ff6b6b}
+        .pool-status-badge{font-size:0.7rem;padding:3px 8px;border-radius:10px}
+        .pool-status-badge.collected{background:rgba(0,255,136,0.2);color:#00ff88}
+        .pool-status-badge.pending{background:rgba(255,170,0,0.2);color:#ffaa00}
         .btn-small{padding:8px 16px;border:none;border-radius:6px;font-size:0.8rem;cursor:pointer;background:#e94560;color:#fff}
         .empty-state{padding:30px;text-align:center;color:rgba(255,255,255,0.5)}
         
-        @media(max-width:600px){
+        .message{padding:12px;border-radius:8px;margin:10px 0;text-align:center}
+        .message.success{background:rgba(0,255,136,0.15);color:#00ff88}
+        .message.error{background:rgba(255,82,82,0.15);color:#ff5252}
+        .hidden{display:none}
+        
+        @media(max-width:768px){
             .stats{grid-template-columns:repeat(2,1fr)}
+            .charts-grid{grid-template-columns:1fr}
         }
     </style>
 </head>
@@ -94,6 +110,8 @@
            th:title="${!isAdministrator} ? 'Administrators only'">Manage Users</a>
     </div>
     
+    <div id="message" class="message hidden"></div>
+    
     <!-- Pool Control -->
     <div class="pool-control">
         <h3>🍽️ Food Pool Survey</h3>
@@ -108,15 +126,20 @@
             <div th:if="${poolOpen}" class="pool-status open">✅ Pool is OPEN</div>
             <div th:unless="${poolOpen}" class="pool-status closed">⏸️ Pool is CLOSED</div>
             
+            <!-- Food date info -->
+            <div th:if="${poolOpen}" class="food-date-info">
+                🍽️ Food will be served on: <strong th:text="${foodDate}">Tomorrow</strong>
+            </div>
+            
             <!-- Timer when pool is open -->
             <div th:if="${poolOpen && minutesLeft != null}" class="pool-timer">
                 <span>Auto-closes at <strong th:text="${autoCloseTime}"></strong></span><br>
                 <span class="time" th:text="${minutesLeft} + ' min left'"></span>
             </div>
             
-            <!-- Duration selector when pool is closed -->
-            <div th:unless="${poolOpen}" class="duration-selector">
-                <label for="duration">Pool Duration:</label>
+            <!-- Config when pool is closed -->
+            <div th:unless="${poolOpen}" class="config-row">
+                <label>Duration:</label>
                 <select id="duration">
                     <option value="1">1 Hour</option>
                     <option value="2">2 Hours</option>
@@ -127,6 +150,9 @@
                     <option value="12">12 Hours</option>
                     <option value="24">24 Hours</option>
                 </select>
+                
+                <label>Food Date:</label>
+                <input type="date" id="foodDate" th:value="${#temporals.format(#temporals.createNow().plusDays(1), 'yyyy-MM-dd')}">
             </div>
             
             <div>
@@ -136,64 +162,88 @@
         </div>
     </div>
     
-    <!-- Stats -->
-    <h2>Today's Statistics</h2>
+    <!-- Notification Section -->
+    <div class="notify-section">
+        <h3>📢 Send Notifications</h3>
+        <div class="notify-buttons">
+            <button class="notify-btn" onclick="sendNotify('participate')">
+                📝 Remind to Vote
+            </button>
+            <button class="notify-btn" onclick="sendNotify('eat')">
+                🍽️ Food Has Arrived
+            </button>
+            <button class="notify-btn" onclick="sendNotify('lastcall')">
+                🚨 Last Call to Vote
+            </button>
+            <button class="notify-btn primary" onclick="showCustomNotify()">
+                ✏️ Custom Message
+            </button>
+        </div>
+        <div id="customNotifyBox" class="hidden" style="margin-top:15px">
+            <textarea id="customMessage" placeholder="Enter your message..." style="width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:#1a1a2e;color:#fff;min-height:80px;font-family:inherit"></textarea>
+            <button class="notify-btn primary" onclick="sendCustomNotify()" style="margin-top:10px">Send Custom Message</button>
+        </div>
+    </div>
+    
+    <!-- Charts -->
+    <h2>📊 Statistics Overview</h2>
+    <div class="charts-grid">
+        <div class="chart-card">
+            <h4>Participation (Total Employees: <span th:text="${totalEmployees}">0</span>)</h4>
+            <div class="chart-container">
+                <canvas id="participationChart"></canvas>
+            </div>
+        </div>
+        <div class="chart-card">
+            <h4>Food Collection Status</h4>
+            <div class="chart-container">
+                <canvas id="collectionChart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Stats Cards -->
     <div class="stats">
         <div class="stat">
             <div class="stat-value veg" th:text="${vegCount}">0</div>
-            <div class="stat-label">Veg</div>
+            <div class="stat-label">🥗 Veg Voted</div>
         </div>
         <div class="stat">
             <div class="stat-value nonveg" th:text="${nonvegCount}">0</div>
-            <div class="stat-label">Non-Veg</div>
+            <div class="stat-label">🍗 Non-Veg Voted</div>
         </div>
         <div class="stat">
             <div class="stat-value total" th:text="${totalCount}">0</div>
-            <div class="stat-label">Total Registered</div>
+            <div class="stat-label">📝 Total Voted</div>
         </div>
         <div class="stat">
             <div class="stat-value collected" th:text="${collectedCount}">0</div>
-            <div class="stat-label">Food Collected</div>
+            <div class="stat-label">✅ Food Collected</div>
         </div>
     </div>
     
-    <!-- Consumption Progress -->
-    <div th:if="${totalCount > 0}">
-        <div class="consumption-bar">
-            <div class="consumption-fill" th:style="'width:' + ${consumptionPercent} + '%'"></div>
+    <!-- Additional Stats -->
+    <div class="stats">
+        <div class="stat">
+            <div class="stat-value" style="color:#ff5252" th:text="${notVotedCount}">0</div>
+            <div class="stat-label">❌ Not Voted</div>
         </div>
-        <div class="consumption-text">
-            <span th:text="${collectedCount}"></span> / <span th:text="${totalCount}"></span> meals collected 
-            (<span th:text="${consumptionPercent}"></span>%)
+        <div class="stat">
+            <div class="stat-value" style="color:#ffaa00" th:text="${notCollectedCount}">0</div>
+            <div class="stat-label">⏳ Not Collected</div>
         </div>
-    </div>
-    
-    <!-- Menu Status -->
-    <h2>Today's Menu</h2>
-    <div class="menu-card">
-        <div class="menu-row">
-            <span>Food Available</span>
-            <span th:if="${foodAvailable}" class="available">✓ Yes</span>
-            <span th:unless="${foodAvailable}" class="unavailable">✗ No</span>
+        <div class="stat">
+            <div class="stat-value" style="color:#00ff88" th:text="${participationPercent} + '%'">0%</div>
+            <div class="stat-label">📈 Participation</div>
         </div>
-        <div class="menu-row">
-            <span>🥗 Vegetarian</span>
-            <span th:if="${menu.vegAvailable}" class="available">✓ Available</span>
-            <span th:unless="${menu.vegAvailable}" class="unavailable">✗ Not Available</span>
-        </div>
-        <div class="menu-row">
-            <span>🍗 Non-Veg</span>
-            <span th:if="${menu.nonvegAvailable}" class="available">✓ Available</span>
-            <span th:unless="${menu.nonvegAvailable}" class="unavailable">✗ Not Available</span>
-        </div>
-        <div class="menu-row">
-            <span></span>
-            <a href="/admin/menu" class="btn-small">Edit Menu</a>
+        <div class="stat">
+            <div class="stat-value" style="color:#00d9ff" th:text="${consumptionPercent} + '%'">0%</div>
+            <div class="stat-label">📊 Collection Rate</div>
         </div>
     </div>
     
-    <!-- Registrations -->
-    <h2>Today's Registrations</h2>
+    <!-- Registrations List -->
+    <h2>📋 Today's Registrations</h2>
     <div class="pool-list">
         <div th:if="${#lists.isEmpty(pools)}" class="empty-state">No registrations yet</div>
         <div th:each="pool : ${pools}" class="pool-item">
@@ -201,32 +251,133 @@
                 <div class="pool-name" th:text="${pool.employeeName}">Name</div>
                 <div class="pool-id" th:text="${pool.employeeId}">ID</div>
             </div>
-            <span class="pool-type" th:classappend="${pool.foodType}" th:text="${pool.foodType}">veg</span>
+            <div style="display:flex;gap:10px;align-items:center">
+                <span class="pool-type" th:classappend="${pool.foodType}" th:text="${pool.foodType}">veg</span>
+            </div>
         </div>
     </div>
 </div>
 
-<script>
+<script th:inline="javascript">
+// Chart Data
+const vegCount = [[${vegCount}]];
+const nonvegCount = [[${nonvegCount}]];
+const totalVoted = [[${totalCount}]];
+const collected = [[${collectedCount}]];
+const notCollected = [[${notCollectedCount}]];
+const notVoted = [[${notVotedCount}]];
+const totalEmployees = [[${totalEmployees}]];
+
+// Participation Chart
+new Chart(document.getElementById('participationChart'), {
+    type: 'doughnut',
+    data: {
+        labels: ['Veg', 'Non-Veg', 'Not Voted'],
+        datasets: [{
+            data: [vegCount, nonvegCount, notVoted],
+            backgroundColor: ['#00ff88', '#ff6b6b', '#444'],
+            borderWidth: 0
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: { color: '#fff', padding: 15 }
+            }
+        }
+    }
+});
+
+// Collection Chart
+new Chart(document.getElementById('collectionChart'), {
+    type: 'doughnut',
+    data: {
+        labels: ['Collected', 'Not Collected'],
+        datasets: [{
+            data: [collected, notCollected],
+            backgroundColor: ['#00d9ff', '#ffaa00'],
+            borderWidth: 0
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: { color: '#fff', padding: 15 }
+            }
+        }
+    }
+});
+
+// Functions
+function showMessage(text, isSuccess) {
+    const msg = document.getElementById('message');
+    msg.textContent = text;
+    msg.className = 'message ' + (isSuccess ? 'success' : 'error');
+    setTimeout(() => msg.classList.add('hidden'), 4000);
+}
+
 async function openPool() {
     const duration = document.getElementById('duration').value;
-    if (!confirm('Start the food pool survey for ' + duration + ' hours? Users will be able to register.')) return;
+    const foodDate = document.getElementById('foodDate').value;
+    
+    if (!confirm('Start the food pool survey for ' + duration + ' hours?')) return;
     
     const res = await fetch('/admin/pool/open', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({duration: parseInt(duration)})
+        body: JSON.stringify({duration: parseInt(duration), foodDate: foodDate})
     });
     const data = await res.json();
-    if (data.success) location.reload();
-    else alert(data.error);
+    if (data.success) {
+        showMessage(data.message, true);
+        setTimeout(() => location.reload(), 1500);
+    } else {
+        showMessage(data.error, false);
+    }
 }
 
 async function closePool() {
-    if (!confirm('Close the food pool? Users will not be able to register.')) return;
+    if (!confirm('Close the food pool?')) return;
     const res = await fetch('/admin/pool/close', {method: 'POST'});
     const data = await res.json();
     if (data.success) location.reload();
-    else alert(data.error);
+    else showMessage(data.error, false);
+}
+
+async function sendNotify(type) {
+    const res = await fetch('/admin/notify/' + type, {method: 'POST'});
+    const data = await res.json();
+    showMessage(data.message || data.error, data.success);
+}
+
+function showCustomNotify() {
+    document.getElementById('customNotifyBox').classList.toggle('hidden');
+}
+
+async function sendCustomNotify() {
+    const message = document.getElementById('customMessage').value.trim();
+    if (!message) {
+        showMessage('Please enter a message', false);
+        return;
+    }
+    
+    const res = await fetch('/admin/notify/custom', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({message: message})
+    });
+    const data = await res.json();
+    showMessage(data.message || data.error, data.success);
+    if (data.success) {
+        document.getElementById('customMessage').value = '';
+        document.getElementById('customNotifyBox').classList.add('hidden');
+    }
 }
 
 // Auto-refresh page every 30 seconds when pool is open

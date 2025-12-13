@@ -48,8 +48,8 @@ public class FoodPoolService {
         return getTodayMenu().isFoodAvailable();
     }
     
-    // Admin: Start the pool/survey with duration
-    public MenuConfig openPool(String adminEmail, int durationHours) {
+    // Admin: Start the pool/survey with duration and food date
+    public MenuConfig openPool(String adminEmail, int durationHours, LocalDate foodDate) {
         MenuConfig config = getTodayMenu();
         
         if (!config.isFoodAvailable()) {
@@ -68,6 +68,7 @@ public class FoodPoolService {
         config.setPoolDurationHours(durationHours);
         config.setPoolAutoCloseAt(now.plusHours(durationHours));
         config.setPoolClosedAt(null);
+        config.setFoodDate(foodDate);  // Set when food will be served
         
         // Reset notification flags
         config.setNotificationPoolStarted(true);
@@ -79,7 +80,7 @@ public class FoodPoolService {
         
         // Send Cliq notification
         try {
-            cliqNotificationService.notifyPoolStarted(durationHours);
+            cliqNotificationService.notifyPoolStarted(durationHours, foodDate);
         } catch (Exception e) {
             log.error("Failed to send pool started notification: {}", e.getMessage());
         }
@@ -88,8 +89,13 @@ public class FoodPoolService {
     }
     
     // Overload for backward compatibility
+    public MenuConfig openPool(String adminEmail, int durationHours) {
+        return openPool(adminEmail, durationHours, LocalDate.now().plusDays(1));
+    }
+    
+    // Overload for backward compatibility
     public MenuConfig openPool(String adminEmail) {
-        return openPool(adminEmail, 6);  // Default 6 hours
+        return openPool(adminEmail, 6, LocalDate.now().plusDays(1));
     }
     
     // Admin: Close the pool
