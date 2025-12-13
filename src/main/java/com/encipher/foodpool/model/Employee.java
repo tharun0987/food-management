@@ -27,6 +27,10 @@ public class Employee {
     
     private LocalDate dateOfJoining;
     
+    // Role: ADMINISTRATOR, CONTRIBUTOR, USER
+    private String role;
+    
+    // Legacy field - kept for backward compatibility
     private boolean isAdmin;
     
     private boolean isActive;
@@ -36,7 +40,21 @@ public class Employee {
         this.name = name;
         this.email = email;
         this.dateOfJoining = dateOfJoining;
+        this.role = "USER";
         this.isAdmin = false;
         this.isActive = true;
+    }
+    
+    // Helper methods for role checking
+    public boolean isAdministrator() {
+        return "ADMINISTRATOR".equals(role) || isAdmin;
+    }
+    
+    public boolean isContributor() {
+        return "CONTRIBUTOR".equals(role);
+    }
+    
+    public boolean hasAdminAccess() {
+        return isAdministrator() || isContributor();
     }
 }

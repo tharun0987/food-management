@@ -33,7 +33,10 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/", "/login", "/error", "/static/**", "/css/**", "/js/**").permitAll()
-                .requestMatchers("/admin/**").hasRole("ADMIN")
+                // Admin pages - require ADMIN or CONTRIBUTOR role
+                .requestMatchers("/admin", "/admin/", "/admin/menu", "/admin/menu/**", "/admin/pool/**").hasAnyRole("ADMIN", "CONTRIBUTOR")
+                // Employee management - only ADMIN
+                .requestMatchers("/admin/employees", "/admin/employees/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
             .oauth2Login(oauth -> oauth
@@ -81,13 +84,22 @@ public class SecurityConfig {
                 attributes.put("employeeId", employee.getEmployeeId());
                 attributes.put("employeeName", employee.getName());
                 attributes.put("isRegistered", true);
+                attributes.put("role", employee.getRole() != null ? employee.getRole() : "USER");
                 
-                if (employee.isAdmin()) {
+                // Grant roles based on employee role
+                if (employee.isAdministrator()) {
                     authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
                     attributes.put("isAdmin", true);
+                    attributes.put("isAdministrator", true);
+                    log.info("User {} granted ADMINISTRATOR role", employee.getName());
+                } else if (employee.isContributor()) {
+                    authorities.add(new SimpleGrantedAuthority("ROLE_CONTRIBUTOR"));
+                    attributes.put("isContributor", true);
+                    attributes.put("isAdmin", true);  // For UI showing admin link
+                    log.info("User {} granted CONTRIBUTOR role", employee.getName());
                 }
                 
-                log.info("Employee found: {} - {}", employee.getEmployeeId(), employee.getName());
+                log.info("Employee found: {} - {} (Role: {})", employee.getEmployeeId(), employee.getName(), employee.getRole());
             } else {
                 attributes.put("isRegistered", false);
                 log.warn("Employee not found for: {} - {}", displayName, email);
@@ -97,4 +109,3 @@ public class SecurityConfig {
         };
     }
 }
-

@@ -13,11 +13,13 @@
         .back{color:#fff;text-decoration:none;font-size:1.5rem}
         .title{font-size:1.1rem;font-weight:600}
         .header-right{font-size:0.85rem;color:rgba(255,255,255,0.7)}
+        .role-badge{background:rgba(233,69,96,0.3);color:#e94560;padding:3px 10px;border-radius:12px;font-size:0.7rem;margin-left:10px}
         .container{max-width:900px;margin:0 auto;padding:20px}
         h2{margin:20px 0 15px;font-size:1.1rem;color:rgba(255,255,255,0.8)}
         .nav-links{display:flex;gap:10px;margin:20px 0;flex-wrap:wrap}
         .nav-link{color:rgba(255,255,255,0.6);text-decoration:none;padding:8px 16px;border-radius:8px;background:rgba(255,255,255,0.05);font-size:0.85rem}
         .nav-link:hover,.nav-link.active{background:rgba(233,69,96,0.2);color:#e94560}
+        .nav-link.disabled{opacity:0.4;pointer-events:none}
         
         .pool-control{background:linear-gradient(135deg,rgba(233,69,96,0.2),rgba(255,107,107,0.1));border:2px solid #e94560;border-radius:16px;padding:25px;margin:20px 0;text-align:center}
         .pool-control h3{margin-bottom:15px;font-size:1.2rem}
@@ -79,6 +81,7 @@
     <div class="header-left">
         <a href="/home" class="back">←</a>
         <span class="title">Admin Dashboard</span>
+        <span class="role-badge" th:text="${userRole}">ADMIN</span>
     </div>
     <div class="header-right" th:text="${todayDisplay}">Monday, Dec 08</div>
 </div>
@@ -87,7 +90,8 @@
     <div class="nav-links">
         <a href="/admin" class="nav-link active">Dashboard</a>
         <a href="/admin/menu" class="nav-link">Menu Settings</a>
-        <a href="/admin/employees" class="nav-link">Manage Users</a>
+        <a href="/admin/employees" class="nav-link" th:classappend="${!isAdministrator} ? 'disabled'" 
+           th:title="${!isAdministrator} ? 'Administrators only'">Manage Users</a>
     </div>
     
     <!-- Pool Control -->

@@ -28,10 +28,23 @@ public class AdminController {
     private final EmployeeService employeeService;
     private final FoodPoolService foodPoolService;
     
-    @GetMapping("")
-    public String dashboard(@AuthenticationPrincipal OAuth2User user, Model model) {
+    private void addCommonAttributes(OAuth2User user, Model model) {
         model.addAttribute("employeeName", user.getAttribute("employeeName"));
         model.addAttribute("email", user.getAttribute("Email"));
+        
+        // Role information
+        Boolean isAdministrator = user.getAttribute("isAdministrator");
+        Boolean isContributor = user.getAttribute("isContributor");
+        String role = user.getAttribute("role");
+        
+        model.addAttribute("isAdministrator", isAdministrator != null && isAdministrator);
+        model.addAttribute("isContributor", isContributor != null && isContributor);
+        model.addAttribute("userRole", role != null ? role : "USER");
+    }
+    
+    @GetMapping("")
+    public String dashboard(@AuthenticationPrincipal OAuth2User user, Model model) {
+        addCommonAttributes(user, model);
         
         // Today's menu and pool status
         MenuConfig menu = foodPoolService.getTodayMenu();
@@ -114,7 +127,7 @@ public class AdminController {
     
     @GetMapping("/menu")
     public String menuPage(@AuthenticationPrincipal OAuth2User user, Model model) {
-        model.addAttribute("employeeName", user.getAttribute("employeeName"));
+        addCommonAttributes(user, model);
         model.addAttribute("menu", foodPoolService.getTodayMenu());
         model.addAttribute("today", LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
         model.addAttribute("todayDisplay", LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, MMM dd")));
@@ -145,11 +158,14 @@ public class AdminController {
         }
     }
     
+    // ============== EMPLOYEE MANAGEMENT (ADMINISTRATOR ONLY) ==============
+    
     @GetMapping("/employees")
     public String employees(@AuthenticationPrincipal OAuth2User user, Model model) {
-        model.addAttribute("employeeName", user.getAttribute("employeeName"));
+        addCommonAttributes(user, model);
         model.addAttribute("employees", employeeService.getAllActiveEmployees());
-        model.addAttribute("admins", employeeService.getAdmins());
+        model.addAttribute("administrators", employeeService.getAdministrators());
+        model.addAttribute("contributors", employeeService.getContributors());
         return "admin/employees";
     }
     
@@ -174,13 +190,30 @@ public class AdminController {
             String employeeId = (String) body.get("employeeId");
             String name = (String) body.get("name");
             String email = (String) body.get("email");
-            boolean isAdmin = (Boolean) body.getOrDefault("isAdmin", false);
+            String role = (String) body.getOrDefault("role", "USER");
             
-            Employee emp = employeeService.addEmployee(employeeId, name, email, isAdmin);
+            Employee emp = employeeService.addEmployeeWithRole(employeeId, name, email, role);
             return ResponseEntity.ok(Map.of("success", true, "message", "Employee added: " + emp.getName()));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
+    }
+    
+    @PostMapping("/employees/{employeeId}/role")
+    @ResponseBody
+    public ResponseEntity<?> setRole(
+            @PathVariable String employeeId,
+            @RequestBody Map<String, String> body) {
+        
+        String role = body.getOrDefault("role", "USER");
+        
+        // Validate role
+        if (!role.equals("ADMINISTRATOR") && !role.equals("CONTRIBUTOR") && !role.equals("USER")) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Invalid role"));
+        }
+        
+        employeeService.setRole(employeeId, role);
+        return ResponseEntity.ok(Map.of("success", true, "message", "Role updated to " + role));
     }
     
     @PostMapping("/employees/{employeeId}/admin")

@@ -17,4 +17,5 @@ public interface EmployeeRepository extends MongoRepository<Employee, String> {
     List<Employee> findByIsAdminTrue();
     List<Employee> findByIsActiveTrue();
     List<Employee> findByIsActiveTrueOrderByNameAsc();
+    List<Employee> findByRole(String role);
 }

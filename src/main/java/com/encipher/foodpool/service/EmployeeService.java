@@ -69,13 +69,41 @@ public class EmployeeService {
     }
     
     public List<Employee> getAdmins() {
-        return employeeRepository.findByIsAdminTrue();
+        // Get both legacy admins and role-based admins
+        List<Employee> admins = new ArrayList<>();
+        admins.addAll(employeeRepository.findByIsAdminTrue());
+        admins.addAll(employeeRepository.findByRole("ADMINISTRATOR"));
+        admins.addAll(employeeRepository.findByRole("CONTRIBUTOR"));
+        
+        // Remove duplicates
+        return admins.stream()
+                .filter(e -> e != null)
+                .distinct()
+                .toList();
+    }
+    
+    public List<Employee> getAdministrators() {
+        List<Employee> result = new ArrayList<>();
+        result.addAll(employeeRepository.findByRole("ADMINISTRATOR"));
+        // Include legacy admins
+        result.addAll(employeeRepository.findByIsAdminTrue());
+        return result.stream().distinct().toList();
+    }
+    
+    public List<Employee> getContributors() {
+        return employeeRepository.findByRole("CONTRIBUTOR");
     }
     
     public boolean isAdmin(String email) {
         if (email == null) return false;
         Optional<Employee> emp = findByEmail(email);
-        return emp.map(Employee::isAdmin).orElse(false);
+        return emp.map(Employee::hasAdminAccess).orElse(false);
+    }
+    
+    public boolean isAdministrator(String email) {
+        if (email == null) return false;
+        Optional<Employee> emp = findByEmail(email);
+        return emp.map(Employee::isAdministrator).orElse(false);
     }
     
     public boolean isAdminByName(String name) {
@@ -89,9 +117,24 @@ public class EmployeeService {
         return employeeRepository.save(employee);
     }
     
+    public void setRole(String employeeId, String role) {
+        employeeRepository.findByEmployeeId(employeeId).ifPresent(emp -> {
+            emp.setRole(role);
+            // Sync legacy field
+            emp.setAdmin("ADMINISTRATOR".equals(role) || "CONTRIBUTOR".equals(role));
+            employeeRepository.save(emp);
+            log.info("Set role={} for employee: {} - {}", role, employeeId, emp.getName());
+        });
+    }
+    
     public void setAdmin(String employeeId, boolean isAdmin) {
         employeeRepository.findByEmployeeId(employeeId).ifPresent(emp -> {
             emp.setAdmin(isAdmin);
+            if (isAdmin && (emp.getRole() == null || "USER".equals(emp.getRole()))) {
+                emp.setRole("ADMINISTRATOR");
+            } else if (!isAdmin) {
+                emp.setRole("USER");
+            }
             employeeRepository.save(emp);
             log.info("Set admin={} for employee: {} - {}", isAdmin, employeeId, emp.getName());
         });
@@ -120,6 +163,21 @@ public class EmployeeService {
         
         Employee employee = new Employee(employeeId, name, email, LocalDate.now());
         employee.setAdmin(isAdmin);
+        employee.setRole(isAdmin ? "ADMINISTRATOR" : "USER");
+        employee.setActive(true);
+        
+        return employeeRepository.save(employee);
+    }
+    
+    public Employee addEmployeeWithRole(String employeeId, String name, String email, String role) {
+        // Check if exists
+        if (employeeRepository.findByEmployeeId(employeeId).isPresent()) {
+            throw new RuntimeException("Employee ID already exists: " + employeeId);
+        }
+        
+        Employee employee = new Employee(employeeId, name, email, LocalDate.now());
+        employee.setRole(role);
+        employee.setAdmin("ADMINISTRATOR".equals(role) || "CONTRIBUTOR".equals(role));
         employee.setActive(true);
         
         return employeeRepository.save(employee);
@@ -160,6 +218,7 @@ public class EmployeeService {
                 }
                 
                 Employee employee = new Employee(employeeId, name, null, doj);
+                employee.setRole("USER");
                 employeeRepository.save(employee);
                 count++;
                 log.info("Loaded employee: {} - {}", employeeId, name);

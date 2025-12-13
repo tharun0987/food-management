@@ -11,7 +11,7 @@
         .header{background:linear-gradient(135deg,#1a1a2e,#16213e);padding:15px 20px;display:flex;align-items:center;gap:15px}
         .back{color:#fff;text-decoration:none;font-size:1.5rem}
         .title{font-size:1.1rem;font-weight:600}
-        .container{max-width:800px;margin:0 auto;padding:20px}
+        .container{max-width:900px;margin:0 auto;padding:20px}
         h2{margin:25px 0 15px;font-size:1.1rem;display:flex;align-items:center;gap:10px}
         .count{color:rgba(255,255,255,0.5);font-size:0.85rem;font-weight:400}
         
@@ -22,15 +22,33 @@
         .card{background:rgba(255,255,255,0.05);border-radius:16px;padding:20px;margin:15px 0}
         .card-title{font-size:0.9rem;color:rgba(255,255,255,0.6);margin-bottom:15px}
         
-        .form-row{display:grid;grid-template-columns:1fr 2fr 2fr auto;gap:10px;margin-bottom:10px}
-        .form-input{padding:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-family:inherit}
+        .roles-info{background:rgba(0,217,255,0.1);border:1px solid rgba(0,217,255,0.3);border-radius:12px;padding:15px;margin:15px 0;font-size:0.85rem}
+        .roles-info h4{color:#00d9ff;margin-bottom:10px}
+        .roles-info ul{margin-left:20px;line-height:1.8}
+        .roles-info .role-name{color:#e94560;font-weight:600}
+        
+        .form-row{display:grid;grid-template-columns:1fr 2fr 2fr 1fr auto;gap:10px;margin-bottom:10px;align-items:center}
+        .form-input,.form-select{padding:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-family:inherit}
         .form-input::placeholder{color:rgba(255,255,255,0.3)}
+        .form-select{cursor:pointer}
+        .form-select option{background:#1a1a2e}
         .btn-add{padding:10px 20px;background:#00ff88;color:#000;border:none;border-radius:8px;font-weight:600;cursor:pointer}
         
         .upload-box{border:2px dashed rgba(255,255,255,0.2);border-radius:12px;padding:25px;text-align:center;margin:15px 0}
         .upload-box input{display:none}
         .upload-btn{display:inline-block;padding:10px 20px;background:rgba(255,255,255,0.1);border-radius:8px;cursor:pointer;font-weight:500}
         .upload-btn:hover{background:rgba(255,255,255,0.2)}
+        
+        .role-section{margin:20px 0}
+        .role-header{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+        .role-chips{display:flex;flex-wrap:wrap;gap:10px}
+        .role-chip{padding:10px 15px;border-radius:20px;font-size:0.85rem;display:flex;align-items:center;gap:10px}
+        .role-chip.admin{background:rgba(233,69,96,0.2);border:1px solid #e94560}
+        .role-chip.contributor{background:rgba(255,170,0,0.2);border:1px solid #ffaa00}
+        .role-chip .name{font-weight:500}
+        .role-chip .id{font-size:0.75rem;opacity:0.6}
+        .role-chip .remove{cursor:pointer;opacity:0.6;font-size:1.1rem}
+        .role-chip .remove:hover{opacity:1}
         
         .user-list{background:rgba(255,255,255,0.05);border-radius:12px;overflow:hidden}
         .user-item{display:flex;justify-content:space-between;align-items:center;padding:15px 20px;border-bottom:1px solid rgba(255,255,255,0.05)}
@@ -41,7 +59,11 @@
         .user-email{font-size:0.75rem;color:rgba(255,255,255,0.4)}
         .badge{padding:3px 8px;border-radius:10px;font-size:0.65rem;font-weight:600}
         .badge.admin{background:rgba(233,69,96,0.2);color:#e94560}
-        .user-actions{display:flex;gap:8px}
+        .badge.contributor{background:rgba(255,170,0,0.2);color:#ffaa00}
+        .badge.user{background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.6)}
+        .user-actions{display:flex;gap:8px;align-items:center}
+        .role-select{padding:6px 10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.2);border-radius:6px;color:#fff;font-size:0.8rem;cursor:pointer}
+        .role-select option{background:#1a1a2e}
         .btn-action{padding:6px 12px;border:1px solid rgba(255,255,255,0.2);border-radius:6px;background:transparent;color:#fff;font-size:0.75rem;cursor:pointer}
         .btn-action:hover{border-color:#e94560;color:#e94560}
         .btn-action.danger{border-color:#ff5252;color:#ff5252}
@@ -52,14 +74,12 @@
         .message.error{background:rgba(255,82,82,0.15);color:#ff5252}
         .hidden{display:none}
         
-        .admins-list{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0}
-        .admin-chip{background:rgba(233,69,96,0.2);padding:8px 15px;border-radius:20px;font-size:0.85rem;display:flex;align-items:center;gap:8px}
-        .admin-chip .remove{cursor:pointer;opacity:0.6}
-        .admin-chip .remove:hover{opacity:1}
+        .empty-state{padding:20px;text-align:center;color:rgba(255,255,255,0.5)}
         
-        @media(max-width:600px){
+        @media(max-width:700px){
             .form-row{grid-template-columns:1fr;gap:8px}
-            .user-actions{flex-direction:column}
+            .user-item{flex-direction:column;align-items:flex-start;gap:10px}
+            .user-actions{width:100%;justify-content:flex-end}
         }
     </style>
 </head>
@@ -78,15 +98,47 @@
     
     <div id="message" class="message hidden"></div>
     
-    <!-- Admins -->
-    <h2>👑 Admins <span class="count" th:text="'(' + ${#lists.size(admins)} + ')'"></span></h2>
-    <div class="card">
-        <div class="admins-list">
-            <div th:each="admin : ${admins}" class="admin-chip">
-                <span th:text="${admin.name}">Admin Name</span>
-                <span class="remove" th:onclick="'removeAdmin(\'' + ${admin.employeeId} + '\')'" title="Remove admin">✕</span>
+    <!-- Roles Info -->
+    <div class="roles-info">
+        <h4>📋 Role Permissions</h4>
+        <ul>
+            <li><span class="role-name">ADMINISTRATOR</span> - Full access: manage users, menu, pool, roles</li>
+            <li><span class="role-name">CONTRIBUTOR</span> - Can update menu and start/stop pool only</li>
+            <li><span class="role-name">USER</span> - Regular employee (register & collect food)</li>
+        </ul>
+    </div>
+    
+    <!-- Administrators -->
+    <div class="role-section">
+        <div class="role-header">
+            <h2>👑 Administrators <span class="count" th:text="'(' + ${#lists.size(administrators)} + ')'"></span></h2>
+        </div>
+        <div class="role-chips">
+            <div th:each="admin : ${administrators}" class="role-chip admin">
+                <div>
+                    <span class="name" th:text="${admin.name}">Name</span>
+                    <span class="id" th:text="'(' + ${admin.employeeId} + ')'"></span>
+                </div>
+                <span class="remove" th:onclick="'changeRole(\'' + ${admin.employeeId} + '\', \'USER\')'" title="Remove role">✕</span>
             </div>
-            <div th:if="${#lists.isEmpty(admins)}" style="color:rgba(255,255,255,0.5)">No admins configured</div>
+            <div th:if="${#lists.isEmpty(administrators)}" class="empty-state">No administrators</div>
+        </div>
+    </div>
+    
+    <!-- Contributors -->
+    <div class="role-section">
+        <div class="role-header">
+            <h2>✏️ Contributors <span class="count" th:text="'(' + ${#lists.size(contributors)} + ')'"></span></h2>
+        </div>
+        <div class="role-chips">
+            <div th:each="contrib : ${contributors}" class="role-chip contributor">
+                <div>
+                    <span class="name" th:text="${contrib.name}">Name</span>
+                    <span class="id" th:text="'(' + ${contrib.employeeId} + ')'"></span>
+                </div>
+                <span class="remove" th:onclick="'changeRole(\'' + ${contrib.employeeId} + '\', \'USER\')'" title="Remove role">✕</span>
+            </div>
+            <div th:if="${#lists.isEmpty(contributors)}" class="empty-state">No contributors</div>
         </div>
     </div>
     
@@ -97,6 +149,11 @@
             <input type="text" class="form-input" id="newEmpId" placeholder="Employee ID">
             <input type="text" class="form-input" id="newEmpName" placeholder="Full Name">
             <input type="email" class="form-input" id="newEmpEmail" placeholder="Email (optional)">
+            <select class="form-select" id="newEmpRole">
+                <option value="USER">User</option>
+                <option value="CONTRIBUTOR">Contributor</option>
+                <option value="ADMINISTRATOR">Administrator</option>
+            </select>
             <button class="btn-add" onclick="addEmployee()">Add</button>
         </div>
     </div>
@@ -116,16 +173,19 @@
             <div class="user-info">
                 <div class="user-name">
                     <span th:text="${emp.name}">Name</span>
-                    <span th:if="${emp.admin}" class="badge admin">ADMIN</span>
+                    <span th:if="${emp.role == 'ADMINISTRATOR'}" class="badge admin">ADMIN</span>
+                    <span th:if="${emp.role == 'CONTRIBUTOR'}" class="badge contributor">CONTRIBUTOR</span>
                 </div>
                 <div class="user-id" th:text="${emp.employeeId}">ID</div>
                 <div th:if="${emp.email}" class="user-email" th:text="${emp.email}">email</div>
             </div>
             <div class="user-actions">
-                <button class="btn-action" 
-                        th:text="${emp.admin} ? 'Remove Admin' : 'Make Admin'"
-                        th:onclick="'toggleAdmin(\'' + ${emp.employeeId} + '\', ' + ${!emp.admin} + ')'">
-                </button>
+                <select class="role-select" th:id="'role-' + ${emp.employeeId}" 
+                        th:onchange="'changeRole(\'' + ${emp.employeeId} + '\', this.value)'">
+                    <option value="USER" th:selected="${emp.role == null || emp.role == 'USER'}">User</option>
+                    <option value="CONTRIBUTOR" th:selected="${emp.role == 'CONTRIBUTOR'}">Contributor</option>
+                    <option value="ADMINISTRATOR" th:selected="${emp.role == 'ADMINISTRATOR'}">Administrator</option>
+                </select>
                 <button class="btn-action danger" 
                         th:onclick="'deleteEmployee(\'' + ${emp.employeeId} + '\', \'' + ${emp.name} + '\')'">
                     Remove
@@ -147,6 +207,7 @@ async function addEmployee() {
     const employeeId = document.getElementById('newEmpId').value.trim();
     const name = document.getElementById('newEmpName').value.trim();
     const email = document.getElementById('newEmpEmail').value.trim();
+    const role = document.getElementById('newEmpRole').value;
     
     if (!employeeId || !name) {
         showMessage('Employee ID and Name are required', false);
@@ -157,7 +218,7 @@ async function addEmployee() {
         const res = await fetch('/admin/employees/add', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({employeeId, name, email: email || null, isAdmin: false})
+            body: JSON.stringify({employeeId, name, email: email || null, role})
         });
         const data = await res.json();
         if (data.success) {
@@ -188,22 +249,23 @@ async function uploadFile() {
     }
 }
 
-async function toggleAdmin(employeeId, isAdmin) {
+async function changeRole(employeeId, role) {
     try {
-        await fetch('/admin/employees/' + employeeId + '/admin', {
+        const res = await fetch('/admin/employees/' + employeeId + '/role', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({isAdmin})
+            body: JSON.stringify({role})
         });
-        location.reload();
+        const data = await res.json();
+        if (data.success) {
+            showMessage('Role updated to ' + role, true);
+            setTimeout(() => location.reload(), 800);
+        } else {
+            showMessage(data.error, false);
+        }
     } catch (e) {
         showMessage('Error: ' + e.message, false);
     }
-}
-
-async function removeAdmin(employeeId) {
-    if (!confirm('Remove admin privileges?')) return;
-    await toggleAdmin(employeeId, false);
 }
 
 async function deleteEmployee(employeeId, name) {
