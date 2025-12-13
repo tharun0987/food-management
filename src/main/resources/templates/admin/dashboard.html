@@ -44,7 +44,6 @@
         .pool-btn:hover{transform:scale(1.05)}
         .pool-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
         
-        /* Notification Buttons */
         .notify-section{background:rgba(255,255,255,0.05);border-radius:12px;padding:20px;margin:20px 0}
         .notify-section h3{font-size:1rem;margin-bottom:15px;color:rgba(255,255,255,0.8)}
         .notify-buttons{display:flex;flex-wrap:wrap;gap:10px}
@@ -52,7 +51,6 @@
         .notify-btn:hover{background:rgba(255,255,255,0.1);border-color:#00d9ff}
         .notify-btn.primary{background:linear-gradient(135deg,#00d9ff,#00ff88);color:#000;border:none}
         
-        /* Charts Section */
         .charts-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;margin:20px 0}
         .chart-card{background:rgba(255,255,255,0.05);border-radius:12px;padding:20px}
         .chart-card h4{font-size:0.9rem;margin-bottom:15px;color:rgba(255,255,255,0.7)}
@@ -75,9 +73,6 @@
         .pool-type{padding:4px 12px;border-radius:20px;font-size:0.7rem;font-weight:600}
         .pool-type.veg{background:rgba(0,255,136,0.2);color:#00ff88}
         .pool-type.nonveg{background:rgba(255,107,107,0.2);color:#ff6b6b}
-        .pool-status-badge{font-size:0.7rem;padding:3px 8px;border-radius:10px}
-        .pool-status-badge.collected{background:rgba(0,255,136,0.2);color:#00ff88}
-        .pool-status-badge.pending{background:rgba(255,170,0,0.2);color:#ffaa00}
         .btn-small{padding:8px 16px;border:none;border-radius:6px;font-size:0.8rem;cursor:pointer;background:#e94560;color:#fff}
         .empty-state{padding:30px;text-align:center;color:rgba(255,255,255,0.5)}
         
@@ -95,7 +90,7 @@
 <body>
 <div class="header">
     <div class="header-left">
-        <a href="/home" class="back">←</a>
+        <a href="/home" class="back">&larr;</a>
         <span class="title">Admin Dashboard</span>
         <span class="role-badge" th:text="${userRole}">ADMIN</span>
     </div>
@@ -114,21 +109,21 @@
     
     <!-- Pool Control -->
     <div class="pool-control">
-        <h3>🍽️ Food Pool Survey</h3>
+        <h3>Food Pool Survey</h3>
         
         <div th:if="${!foodAvailable}">
-            <div class="pool-status unavailable">❌ Food Not Available Today</div>
+            <div class="pool-status unavailable">Food Not Available Today</div>
             <p style="color:rgba(255,255,255,0.6);margin:10px 0">Configure menu first to enable food pool</p>
             <a href="/admin/menu" class="pool-btn start" style="display:inline-block;text-decoration:none">Configure Menu</a>
         </div>
         
         <div th:if="${foodAvailable}">
-            <div th:if="${poolOpen}" class="pool-status open">✅ Pool is OPEN</div>
-            <div th:unless="${poolOpen}" class="pool-status closed">⏸️ Pool is CLOSED</div>
+            <div th:if="${poolOpen}" class="pool-status open">POOL IS OPEN</div>
+            <div th:unless="${poolOpen}" class="pool-status closed">POOL IS CLOSED</div>
             
             <!-- Food date info -->
             <div th:if="${poolOpen}" class="food-date-info">
-                🍽️ Food will be served on: <strong th:text="${foodDate}">Tomorrow</strong>
+                Food will be served on: <strong th:text="${foodDate}">Tomorrow</strong>
             </div>
             
             <!-- Timer when pool is open -->
@@ -156,27 +151,27 @@
             </div>
             
             <div>
-                <button th:if="${!poolOpen}" class="pool-btn start" onclick="openPool()">▶️ Start Survey</button>
-                <button th:if="${poolOpen}" class="pool-btn stop" onclick="closePool()">⏹️ Stop Survey</button>
+                <button th:if="${!poolOpen}" class="pool-btn start" onclick="openPool()">Start Survey</button>
+                <button th:if="${poolOpen}" class="pool-btn stop" onclick="closePool()">Stop Survey</button>
             </div>
         </div>
     </div>
     
     <!-- Notification Section -->
     <div class="notify-section">
-        <h3>📢 Send Notifications</h3>
+        <h3>Send Notifications</h3>
         <div class="notify-buttons">
             <button class="notify-btn" onclick="sendNotify('participate')">
-                📝 Remind to Vote
+                Remind to Vote
             </button>
             <button class="notify-btn" onclick="sendNotify('eat')">
-                🍽️ Food Has Arrived
+                Food Has Arrived
             </button>
             <button class="notify-btn" onclick="sendNotify('lastcall')">
-                🚨 Last Call to Vote
+                Last Call to Vote
             </button>
             <button class="notify-btn primary" onclick="showCustomNotify()">
-                ✏️ Custom Message
+                Custom Message
             </button>
         </div>
         <div id="customNotifyBox" class="hidden" style="margin-top:15px">
@@ -186,7 +181,7 @@
     </div>
     
     <!-- Charts -->
-    <h2>📊 Statistics Overview</h2>
+    <h2>Statistics Overview</h2>
     <div class="charts-grid">
         <div class="chart-card">
             <h4>Participation (Total Employees: <span th:text="${totalEmployees}">0</span>)</h4>
@@ -206,19 +201,19 @@
     <div class="stats">
         <div class="stat">
             <div class="stat-value veg" th:text="${vegCount}">0</div>
-            <div class="stat-label">🥗 Veg Voted</div>
+            <div class="stat-label">Veg Voted</div>
         </div>
         <div class="stat">
             <div class="stat-value nonveg" th:text="${nonvegCount}">0</div>
-            <div class="stat-label">🍗 Non-Veg Voted</div>
+            <div class="stat-label">Non-Veg Voted</div>
         </div>
         <div class="stat">
             <div class="stat-value total" th:text="${totalCount}">0</div>
-            <div class="stat-label">📝 Total Voted</div>
+            <div class="stat-label">Total Voted</div>
         </div>
         <div class="stat">
             <div class="stat-value collected" th:text="${collectedCount}">0</div>
-            <div class="stat-label">✅ Food Collected</div>
+            <div class="stat-label">Food Collected</div>
         </div>
     </div>
     
@@ -226,24 +221,24 @@
     <div class="stats">
         <div class="stat">
             <div class="stat-value" style="color:#ff5252" th:text="${notVotedCount}">0</div>
-            <div class="stat-label">❌ Not Voted</div>
+            <div class="stat-label">Not Voted</div>
         </div>
         <div class="stat">
             <div class="stat-value" style="color:#ffaa00" th:text="${notCollectedCount}">0</div>
-            <div class="stat-label">⏳ Not Collected</div>
+            <div class="stat-label">Not Collected</div>
         </div>
         <div class="stat">
             <div class="stat-value" style="color:#00ff88" th:text="${participationPercent} + '%'">0%</div>
-            <div class="stat-label">📈 Participation</div>
+            <div class="stat-label">Participation</div>
         </div>
         <div class="stat">
             <div class="stat-value" style="color:#00d9ff" th:text="${consumptionPercent} + '%'">0%</div>
-            <div class="stat-label">📊 Collection Rate</div>
+            <div class="stat-label">Collection Rate</div>
         </div>
     </div>
     
     <!-- Registrations List -->
-    <h2>📋 Today's Registrations</h2>
+    <h2>Today's Registrations</h2>
     <div class="pool-list">
         <div th:if="${#lists.isEmpty(pools)}" class="empty-state">No registrations yet</div>
         <div th:each="pool : ${pools}" class="pool-item">

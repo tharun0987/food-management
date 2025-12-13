@@ -38,9 +38,8 @@ app:
   admin-emails: admin@encipherhealth.com,hr@encipherhealth.com
   base-url: http://food.management.encipherhealth.com
   cliq:
-    # Zoho Cliq channel API for notifications
-    channel-url: https://cliq.zoho.in/company/60023432224/api/v2/channelsbyname/foodtest/message
-    api-token: 1001.df6a6e9f3491348c1dc1ff8f876f655b.ac81841f303707e3ab74160a50d8d240
+    # Zoho Cliq incoming webhook URL
+    webhook-url: https://cliq.zoho.in/api/v2/webhooks/incoming/1001.df6a6e9f3491348c1dc1ff8f876f655b.ac81841f303707e3ab74160a50d8d240
 
 logging:
   level:
