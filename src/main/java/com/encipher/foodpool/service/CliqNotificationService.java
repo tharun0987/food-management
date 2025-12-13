@@ -19,18 +19,19 @@ public class CliqNotificationService {
     
     private final RestTemplate restTemplate = new RestTemplate();
     
-    // Use incoming webhook URL format
-    @Value("${app.cliq.webhook-url:https://cliq.zoho.in/api/v2/webhooks/incoming/1001.df6a6e9f3491348c1dc1ff8f876f655b.ac81841f303707e3ab74160a50d8d240}")
-    private String cliqWebhookUrl;
+    // Channel API endpoint
+    @Value("${app.cliq.channel-url:https://cliq.zoho.in/company/60023432224/api/v2/channelsbyname/foodtest/message}")
+    private String cliqChannelUrl;
+    
+    // OAuth token
+    @Value("${app.cliq.oauth-token:1001.df6a6e9f3491348c1dc1ff8f876f655b.ac81841f303707e3ab74160a50d8d240}")
+    private String oauthToken;
     
     @Value("${app.base-url:http://food.management.encipherhealth.com}")
     private String appBaseUrl;
     
     // ============== AUTO NOTIFICATIONS ==============
     
-    /**
-     * Send notification when pool starts
-     */
     public void notifyPoolStarted(int durationHours, LocalDate foodDate) {
         String dateStr = foodDate.format(DateTimeFormatter.ofPattern("EEEE, MMM dd"));
         String message = "[FOOD POOL] Survey Started\n\n" +
@@ -41,16 +42,10 @@ public class CliqNotificationService {
         sendNotification(message);
     }
     
-    /**
-     * Send notification when pool starts (overload)
-     */
     public void notifyPoolStarted(int durationHours) {
         notifyPoolStarted(durationHours, LocalDate.now().plusDays(1));
     }
     
-    /**
-     * Send notification 1 hour before pool closes
-     */
     public void notifyPoolClosingSoon() {
         String message = "[FOOD POOL] Closing Soon\n\n" +
                 "Only 1 hour left to register for tomorrow's food!\n\n" +
@@ -60,9 +55,6 @@ public class CliqNotificationService {
         sendNotification(message);
     }
     
-    /**
-     * Send notification when 50% food consumed
-     */
     public void notify50PercentConsumed(long collected, long total) {
         String message = "[FOOD POOL] 50% Collected\n\n" +
                 "Half of the food has been collected!\n" +
@@ -72,9 +64,6 @@ public class CliqNotificationService {
         sendNotification(message);
     }
     
-    /**
-     * Send notification when 70% food consumed
-     */
     public void notify70PercentConsumed(long collected, long total) {
         String message = "[FOOD POOL] 70% Collected - Hurry!\n\n" +
                 "Most of the food has been collected!\n" +
@@ -84,9 +73,6 @@ public class CliqNotificationService {
         sendNotification(message);
     }
     
-    /**
-     * Send notification when pool is closed
-     */
     public void notifyPoolClosed(long vegCount, long nonvegCount) {
         String message = "[FOOD POOL] Voting Closed\n\n" +
                 "Final Count:\n" +
@@ -100,9 +86,6 @@ public class CliqNotificationService {
     
     // ============== MANUAL NOTIFICATIONS ==============
     
-    /**
-     * Send reminder to participate in pool
-     */
     public void sendParticipateReminder(LocalDate foodDate) {
         String dateStr = foodDate.format(DateTimeFormatter.ofPattern("EEEE, MMM dd"));
         String message = "[REMINDER] Vote for Your Meal\n\n" +
@@ -114,9 +97,6 @@ public class CliqNotificationService {
         sendNotification(message);
     }
     
-    /**
-     * Send reminder to come and eat
-     */
     public void sendEatReminder(long remaining) {
         String message = "[FOOD POOL] Food Has Arrived!\n\n" +
                 "Your meal is ready and waiting!\n" +
@@ -127,9 +107,6 @@ public class CliqNotificationService {
         sendNotification(message);
     }
     
-    /**
-     * Send last call reminder
-     */
     public void sendLastCallReminder() {
         String message = "[LAST CALL] Pool Closing Soon!\n\n" +
                 "Only a few minutes left to vote!\n\n" +
@@ -139,9 +116,6 @@ public class CliqNotificationService {
         sendNotification(message);
     }
     
-    /**
-     * Send custom notification
-     */
     public void sendCustomNotification(String customMessage) {
         String message = "[FOOD POOL] Announcement\n\n" + customMessage;
         sendNotification(message);
@@ -149,29 +123,27 @@ public class CliqNotificationService {
     
     // ============== CORE SEND METHOD ==============
     
-    /**
-     * Send message via Cliq incoming webhook
-     */
     private void sendNotification(String message) {
-        if (cliqWebhookUrl == null || cliqWebhookUrl.isEmpty()) {
-            log.warn("Cliq webhook URL not configured. Message not sent.");
+        if (oauthToken == null || oauthToken.isEmpty()) {
+            log.warn("Cliq OAuth token not configured. Message not sent.");
             return;
         }
         
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("Authorization", "Zoho-oauthtoken " + oauthToken);
             
-            // Zoho Cliq incoming webhook format - just needs "text" field
+            // Zoho Cliq channel message format
             Map<String, Object> payload = new HashMap<>();
             payload.put("text", message);
             
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
             
-            log.info("Sending Cliq notification via webhook...");
-            log.debug("Webhook URL: {}", cliqWebhookUrl);
+            log.info("Sending Cliq notification to channel: foodtest");
+            log.debug("URL: {}", cliqChannelUrl);
             
-            ResponseEntity<String> response = restTemplate.postForEntity(cliqWebhookUrl, request, String.class);
+            ResponseEntity<String> response = restTemplate.postForEntity(cliqChannelUrl, request, String.class);
             
             if (response.getStatusCode().is2xxSuccessful()) {
                 log.info("Cliq notification sent successfully");
