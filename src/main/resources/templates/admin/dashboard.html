@@ -25,6 +25,14 @@
         .pool-status.open{color:#00ff88}
         .pool-status.closed{color:#ffaa00}
         .pool-status.unavailable{color:#ff5252}
+        .pool-timer{background:rgba(0,0,0,0.3);padding:12px 20px;border-radius:10px;margin:15px 0;font-size:0.9rem}
+        .pool-timer .time{font-size:1.3rem;font-weight:700;color:#00d9ff}
+        
+        .duration-selector{margin:15px 0}
+        .duration-selector label{display:block;margin-bottom:8px;font-size:0.9rem;color:rgba(255,255,255,0.7)}
+        .duration-selector select{padding:10px 15px;border-radius:8px;border:2px solid rgba(255,255,255,0.2);background:#1a1a2e;color:#fff;font-size:1rem;width:200px;cursor:pointer}
+        .duration-selector select:focus{outline:none;border-color:#e94560}
+        
         .pool-btn{padding:15px 40px;border:none;border-radius:10px;font-size:1rem;font-weight:600;cursor:pointer;margin:10px 5px;transition:all 0.3s}
         .pool-btn.start{background:#00ff88;color:#000}
         .pool-btn.stop{background:#ff5252;color:#fff}
@@ -39,6 +47,10 @@
         .stat-value.total{color:#00d9ff}
         .stat-value.collected{color:#ffaa00}
         .stat-label{font-size:0.75rem;color:rgba(255,255,255,0.5);margin-top:5px}
+        
+        .consumption-bar{background:rgba(255,255,255,0.1);border-radius:10px;height:20px;margin:15px 0;overflow:hidden}
+        .consumption-fill{height:100%;background:linear-gradient(90deg,#00ff88,#00d9ff);transition:width 0.5s}
+        .consumption-text{text-align:center;font-size:0.85rem;margin-top:5px;color:rgba(255,255,255,0.7)}
         
         .menu-card{background:rgba(255,255,255,0.05);border-radius:12px;padding:20px;margin:20px 0}
         .menu-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.1)}
@@ -92,6 +104,27 @@
             <div th:if="${poolOpen}" class="pool-status open">✅ Pool is OPEN</div>
             <div th:unless="${poolOpen}" class="pool-status closed">⏸️ Pool is CLOSED</div>
             
+            <!-- Timer when pool is open -->
+            <div th:if="${poolOpen && minutesLeft != null}" class="pool-timer">
+                <span>Auto-closes at <strong th:text="${autoCloseTime}"></strong></span><br>
+                <span class="time" th:text="${minutesLeft} + ' min left'"></span>
+            </div>
+            
+            <!-- Duration selector when pool is closed -->
+            <div th:unless="${poolOpen}" class="duration-selector">
+                <label for="duration">Pool Duration:</label>
+                <select id="duration">
+                    <option value="1">1 Hour</option>
+                    <option value="2">2 Hours</option>
+                    <option value="3">3 Hours</option>
+                    <option value="4">4 Hours</option>
+                    <option value="6" selected>6 Hours</option>
+                    <option value="8">8 Hours</option>
+                    <option value="12">12 Hours</option>
+                    <option value="24">24 Hours</option>
+                </select>
+            </div>
+            
             <div>
                 <button th:if="${!poolOpen}" class="pool-btn start" onclick="openPool()">▶️ Start Survey</button>
                 <button th:if="${poolOpen}" class="pool-btn stop" onclick="closePool()">⏹️ Stop Survey</button>
@@ -112,11 +145,22 @@
         </div>
         <div class="stat">
             <div class="stat-value total" th:text="${totalCount}">0</div>
-            <div class="stat-label">Total</div>
+            <div class="stat-label">Total Registered</div>
         </div>
         <div class="stat">
             <div class="stat-value collected" th:text="${collectedCount}">0</div>
-            <div class="stat-label">Collected</div>
+            <div class="stat-label">Food Collected</div>
+        </div>
+    </div>
+    
+    <!-- Consumption Progress -->
+    <div th:if="${totalCount > 0}">
+        <div class="consumption-bar">
+            <div class="consumption-fill" th:style="'width:' + ${consumptionPercent} + '%'"></div>
+        </div>
+        <div class="consumption-text">
+            <span th:text="${collectedCount}"></span> / <span th:text="${totalCount}"></span> meals collected 
+            (<span th:text="${consumptionPercent}"></span>%)
         </div>
     </div>
     
@@ -160,8 +204,14 @@
 
 <script>
 async function openPool() {
-    if (!confirm('Start the food pool survey? Users will be able to register.')) return;
-    const res = await fetch('/admin/pool/open', {method: 'POST'});
+    const duration = document.getElementById('duration').value;
+    if (!confirm('Start the food pool survey for ' + duration + ' hours? Users will be able to register.')) return;
+    
+    const res = await fetch('/admin/pool/open', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({duration: parseInt(duration)})
+    });
     const data = await res.json();
     if (data.success) location.reload();
     else alert(data.error);
@@ -173,6 +223,11 @@ async function closePool() {
     const data = await res.json();
     if (data.success) location.reload();
     else alert(data.error);
+}
+
+// Auto-refresh page every 30 seconds when pool is open
+if (document.querySelector('.pool-status.open')) {
+    setTimeout(() => location.reload(), 30000);
 }
 </script>
 </body>

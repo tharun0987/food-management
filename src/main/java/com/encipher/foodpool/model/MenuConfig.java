@@ -37,7 +37,15 @@ public class MenuConfig {
     
     private LocalDateTime poolOpenedAt;
     private LocalDateTime poolClosedAt;
+    private LocalDateTime poolAutoCloseAt;  // Auto close time
+    private int poolDurationHours;  // Duration in hours (1-24)
     private String poolOpenedBy;
+    
+    // Notification tracking
+    private boolean notificationPoolStarted;
+    private boolean notification1HourBefore;
+    private boolean notification50Percent;
+    private boolean notification70Percent;
     
     private LocalDateTime updatedAt;
     private String updatedBy;
@@ -50,6 +58,11 @@ public class MenuConfig {
         this.nonvegAvailable = false;
         this.vegItems = new ArrayList<>();
         this.nonvegItems = new ArrayList<>();
+        this.poolDurationHours = 6;  // Default 6 hours
+        this.notificationPoolStarted = false;
+        this.notification1HourBefore = false;
+        this.notification50Percent = false;
+        this.notification70Percent = false;
         this.updatedAt = LocalDateTime.now();
     }
 }

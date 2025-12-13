@@ -13,7 +13,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 
@@ -37,12 +39,24 @@ public class AdminController {
         model.addAttribute("poolOpen", menu.isPoolOpen());
         model.addAttribute("foodAvailable", menu.isFoodAvailable());
         
+        // Pool time info
+        if (menu.isPoolOpen() && menu.getPoolAutoCloseAt() != null) {
+            long minutesLeft = ChronoUnit.MINUTES.between(LocalDateTime.now(), menu.getPoolAutoCloseAt());
+            model.addAttribute("minutesLeft", Math.max(0, minutesLeft));
+            model.addAttribute("autoCloseTime", menu.getPoolAutoCloseAt().format(DateTimeFormatter.ofPattern("hh:mm a")));
+        }
+        
         // Today's stats
         Map<String, Long> stats = foodPoolService.getTodayStats();
         model.addAttribute("vegCount", stats.get("veg"));
         model.addAttribute("nonvegCount", stats.get("nonveg"));
         model.addAttribute("totalCount", stats.get("total"));
         model.addAttribute("collectedCount", stats.get("collected"));
+        
+        // Calculate consumption percentage
+        long total = stats.get("total");
+        long collected = stats.get("collected");
+        model.addAttribute("consumptionPercent", total > 0 ? (collected * 100 / total) : 0);
         
         // Today's pools
         model.addAttribute("pools", foodPoolService.getTodayPools());
@@ -55,11 +69,32 @@ public class AdminController {
     
     @PostMapping("/pool/open")
     @ResponseBody
-    public ResponseEntity<?> openPool(@AuthenticationPrincipal OAuth2User user) {
+    public ResponseEntity<?> openPool(
+            @AuthenticationPrincipal OAuth2User user,
+            @RequestBody(required = false) Map<String, Object> body) {
         try {
             String email = user.getAttribute("Email");
-            foodPoolService.openPool(email);
-            return ResponseEntity.ok(Map.of("success", true, "message", "Pool opened! Users can now register."));
+            
+            // Get duration from request, default to 6 hours
+            int duration = 6;
+            if (body != null && body.containsKey("duration")) {
+                Object durationObj = body.get("duration");
+                if (durationObj instanceof Integer) {
+                    duration = (Integer) durationObj;
+                } else if (durationObj instanceof String) {
+                    duration = Integer.parseInt((String) durationObj);
+                }
+            }
+            
+            // Validate duration (1-24 hours)
+            if (duration < 1) duration = 1;
+            if (duration > 24) duration = 24;
+            
+            foodPoolService.openPool(email, duration);
+            return ResponseEntity.ok(Map.of(
+                    "success", true, 
+                    "message", "Pool opened for " + duration + " hours! Users can now register."
+            ));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }

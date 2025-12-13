@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Scan QR | Encipher Food Pool</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -14,8 +14,9 @@
         .container{max-width:500px;margin:0 auto;padding:20px}
         .camera-box{background:#000;border-radius:16px;overflow:hidden;aspect-ratio:1;position:relative;margin:20px 0}
         video{width:100%;height:100%;object-fit:cover}
-        .overlay{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center}
-        .scan-frame{width:70%;height:70%;border:3px solid #00ff88;border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,0.5)}
+        .overlay{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+        .scan-frame{width:70%;height:70%;border:3px solid #00ff88;border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,0.5);animation:pulse 2s infinite}
+        @keyframes pulse{0%,100%{border-color:#00ff88}50%{border-color:#00d9ff}}
         .status{padding:20px;border-radius:16px;text-align:center;margin:20px 0}
         .status.info{background:rgba(0,217,255,0.1);border:1px solid #00d9ff}
         .status.success{background:rgba(0,255,136,0.1);border:1px solid #00ff88}
@@ -27,6 +28,14 @@
         .btn-secondary{background:rgba(255,255,255,0.1);color:#fff}
         canvas{display:none}
         .hidden{display:none}
+        .camera-error{padding:40px 20px;text-align:center;color:#ff5252}
+        .camera-error p{margin:10px 0;color:rgba(255,255,255,0.6);font-size:0.9rem}
+        .loading{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:rgba(255,255,255,0.6)}
+        .loading .spinner{width:40px;height:40px;border:3px solid rgba(255,255,255,0.1);border-top-color:#00ff88;border-radius:50%;animation:spin 1s linear infinite}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        .permission-guide{background:rgba(255,255,255,0.05);padding:20px;border-radius:12px;margin:15px 0}
+        .permission-guide h4{margin-bottom:10px;color:#ffaa00}
+        .permission-guide ul{margin-left:20px;font-size:0.85rem;line-height:1.8;color:rgba(255,255,255,0.7)}
     </style>
 </head>
 <body>
@@ -56,9 +65,27 @@
             <p>Registered for: <strong th:text="${pooledType}" style="text-transform:uppercase"></strong></p>
         </div>
         
-        <div class="camera-box">
-            <video id="video" autoplay playsinline muted></video>
-            <div class="overlay"><div class="scan-frame"></div></div>
+        <div class="camera-box" id="cameraBox">
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p style="margin-top:15px">Initializing camera...</p>
+            </div>
+            <video id="video" autoplay playsinline muted style="display:none"></video>
+            <div class="overlay" id="overlay" style="display:none"><div class="scan-frame"></div></div>
+        </div>
+        
+        <div id="cameraError" class="camera-error hidden">
+            <h3>📷 Camera Access Required</h3>
+            <p id="errorMessage">Unable to access camera</p>
+            <div class="permission-guide">
+                <h4>How to enable camera:</h4>
+                <ul>
+                    <li><strong>iOS Safari:</strong> Settings → Safari → Camera → Allow</li>
+                    <li><strong>Android Chrome:</strong> Tap lock icon in address bar → Site settings → Camera → Allow</li>
+                    <li><strong>Desktop:</strong> Click camera icon in address bar → Allow</li>
+                </ul>
+            </div>
+            <button onclick="retryCamera()" class="btn btn-primary">🔄 Try Again</button>
         </div>
         
         <button onclick="startCamera()" class="btn btn-primary" id="startBtn">📷 Start Camera</button>
@@ -66,6 +93,7 @@
         <div id="result" class="status success hidden">
             <h3>✓ Food Collected!</h3>
             <p id="resultMsg"></p>
+            <a href="/home" class="btn btn-secondary" style="margin-top:15px">Back to Home</a>
         </div>
     </div>
     
@@ -77,44 +105,148 @@
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
     const ctx = canvas ? canvas.getContext('2d', {willReadFrequently: true}) : null;
+    const loading = document.getElementById('loading');
+    const overlay = document.getElementById('overlay');
+    const cameraBox = document.getElementById('cameraBox');
+    const cameraError = document.getElementById('cameraError');
+    const startBtn = document.getElementById('startBtn');
     let scanning = false;
+    let stream = null;
     
     async function startCamera() {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: {facingMode: 'environment'},
-                audio: false
-            });
-            video.srcObject = stream;
-            video.onloadedmetadata = () => {
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                document.getElementById('startBtn').textContent = '🔍 Scanning...';
-                scanning = true;
-                scan();
-            };
-        } catch (e) {
-            alert('Camera error: ' + e.message);
+        if (startBtn) startBtn.style.display = 'none';
+        if (loading) loading.style.display = 'flex';
+        if (cameraError) cameraError.classList.add('hidden');
+        
+        // Check if getUserMedia is supported
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            showCameraError('Camera not supported on this browser. Please use Chrome or Safari.');
+            return;
         }
+        
+        try {
+            // Stop existing stream if any
+            if (stream) {
+                stream.getTracks().forEach(t => t.stop());
+            }
+            
+            // Request camera access with fallback options
+            const constraints = [
+                { video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false },
+                { video: { facingMode: 'environment' }, audio: false },
+                { video: { facingMode: 'user' }, audio: false },
+                { video: true, audio: false }
+            ];
+            
+            let lastError = null;
+            for (const constraint of constraints) {
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia(constraint);
+                    break;
+                } catch (e) {
+                    lastError = e;
+                    console.log('Failed with constraint:', constraint, e);
+                }
+            }
+            
+            if (!stream) {
+                throw lastError || new Error('Could not access camera');
+            }
+            
+            video.srcObject = stream;
+            
+            // Wait for video to be ready
+            await new Promise((resolve, reject) => {
+                video.onloadedmetadata = () => {
+                    video.play().then(resolve).catch(reject);
+                };
+                video.onerror = reject;
+                setTimeout(() => reject(new Error('Video load timeout')), 10000);
+            });
+            
+            // Setup canvas
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+            
+            // Show video and overlay
+            if (loading) loading.style.display = 'none';
+            video.style.display = 'block';
+            if (overlay) overlay.style.display = 'flex';
+            
+            scanning = true;
+            scan();
+            
+        } catch (e) {
+            console.error('Camera error:', e);
+            
+            let message = 'Unable to access camera.';
+            if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
+                message = 'Camera permission denied. Please allow camera access and try again.';
+            } else if (e.name === 'NotFoundError' || e.name === 'DevicesNotFoundError') {
+                message = 'No camera found on this device.';
+            } else if (e.name === 'NotReadableError' || e.name === 'TrackStartError') {
+                message = 'Camera is in use by another app. Please close other apps and try again.';
+            } else if (e.name === 'OverconstrainedError') {
+                message = 'Camera does not support required settings.';
+            } else if (e.name === 'SecurityError') {
+                message = 'Camera access blocked. This page needs to be served over HTTPS.';
+            }
+            
+            showCameraError(message);
+        }
+    }
+    
+    function showCameraError(message) {
+        if (loading) loading.style.display = 'none';
+        video.style.display = 'none';
+        if (overlay) overlay.style.display = 'none';
+        if (cameraError) {
+            cameraError.classList.remove('hidden');
+            document.getElementById('errorMessage').textContent = message;
+        }
+    }
+    
+    function retryCamera() {
+        startCamera();
     }
     
     function scan() {
         if (!scanning) return;
-        ctx.drawImage(video, 0, 0);
-        const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const code = jsQR(img.data, img.width, img.height);
         
-        if (code && code.data) {
-            scanning = false;
-            video.srcObject.getTracks().forEach(t => t.stop());
-            verifyScan(code.data);
-        } else {
-            requestAnimationFrame(scan);
+        try {
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                    inversionAttempts: 'dontInvert'
+                });
+                
+                if (code && code.data) {
+                    scanning = false;
+                    
+                    // Stop camera
+                    if (stream) {
+                        stream.getTracks().forEach(t => t.stop());
+                    }
+                    
+                    // Visual feedback
+                    if (cameraBox) cameraBox.style.borderColor = '#00ff88';
+                    
+                    verifyScan(code.data);
+                    return;
+                }
+            }
+        } catch (e) {
+            console.error('Scan error:', e);
         }
+        
+        requestAnimationFrame(scan);
     }
     
     async function verifyScan(qrData) {
-        document.getElementById('startBtn').textContent = 'Verifying...';
+        if (cameraBox) {
+            cameraBox.innerHTML = '<div class="loading"><div class="spinner"></div><p style="margin-top:15px">Verifying...</p></div>';
+        }
         
         try {
             const res = await fetch('/api/scan', {
@@ -126,19 +258,30 @@
             const data = await res.json();
             
             if (data.success) {
-                document.getElementById('scanSection').querySelector('.camera-box').style.display = 'none';
-                document.getElementById('startBtn').style.display = 'none';
+                if (cameraBox) cameraBox.style.display = 'none';
                 document.getElementById('resultMsg').textContent = data.message;
                 document.getElementById('result').classList.remove('hidden');
             } else {
-                alert(data.error);
-                document.getElementById('startBtn').textContent = '📷 Try Again';
+                if (cameraBox) {
+                    cameraBox.innerHTML = '<div class="camera-error"><h3>❌ Error</h3><p>' + data.error + '</p></div>';
+                }
+                setTimeout(() => location.reload(), 2000);
             }
         } catch (e) {
-            alert('Error: ' + e.message);
+            console.error('API error:', e);
+            if (cameraBox) {
+                cameraBox.innerHTML = '<div class="camera-error"><h3>❌ Network Error</h3><p>Please check your connection and try again.</p></div>';
+            }
+            setTimeout(() => location.reload(), 2000);
         }
+    }
+    
+    // Auto-start camera when page loads
+    if (document.getElementById('scanSection')) {
+        window.addEventListener('load', () => {
+            setTimeout(startCamera, 500);
+        });
     }
 </script>
 </body>
 </html>
-
