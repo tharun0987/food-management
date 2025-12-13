@@ -24,10 +24,7 @@ public class CliqNotificationService {
     @Value("${app.cliq.webhook-url:}")
     private String cliqWebhookUrl;
     
-    @Value("${app.cliq.bot-token:}")
-    private String cliqBotToken;
-    
-    @Value("${app.base-url:http://20.102.40.235:8888}")
+    @Value("${app.base-url:http://food.management.encipherhealth.com}")
     private String appBaseUrl;
     
     /**
@@ -36,11 +33,11 @@ public class CliqNotificationService {
     public void notifyPoolStarted(int durationHours) {
         String message = "🍽️ *Food Pool Survey Started!*\n\n" +
                 "The food pool is now open for registration.\n" +
-                "Duration: *" + durationHours + " hours*\n\n" +
-                "👉 [Register Now](" + appBaseUrl + "/pool)\n\n" +
+                "⏱️ Duration: *" + durationHours + " hours*\n\n" +
+                "👉 Register Now: " + appBaseUrl + "/pool\n\n" +
                 "Don't miss out on your meal! 🥗🍗";
         
-        sendToAllEmployees(message);
+        sendNotification(message);
     }
     
     /**
@@ -50,9 +47,9 @@ public class CliqNotificationService {
         String message = "⏰ *Food Pool Closing Soon!*\n\n" +
                 "The food pool will close in *1 hour*.\n\n" +
                 "If you haven't registered yet, do it now!\n" +
-                "👉 [Register Now](" + appBaseUrl + "/pool)";
+                "👉 Register: " + appBaseUrl + "/pool";
         
-        sendToAllEmployees(message);
+        sendNotification(message);
     }
     
     /**
@@ -64,7 +61,7 @@ public class CliqNotificationService {
                 "📊 " + collected + "/" + total + " meals collected\n\n" +
                 "If you haven't had your lunch yet, *go and have it soon!* 🏃‍♂️";
         
-        sendToAllEmployees(message);
+        sendNotification(message);
     }
     
     /**
@@ -76,7 +73,7 @@ public class CliqNotificationService {
                 "📊 " + collected + "/" + total + " meals collected\n\n" +
                 "*Go and have your lunch NOW!* 🏃‍♂️💨";
         
-        sendToAllEmployees(message);
+        sendNotification(message);
     }
     
     /**
@@ -90,16 +87,15 @@ public class CliqNotificationService {
                 "🍗 Non-Veg: " + nonvegCount + "\n" +
                 "📌 Total: " + (vegCount + nonvegCount);
         
-        sendToAllEmployees(message);
+        sendNotification(message);
     }
     
     /**
-     * Send message to all active employees via Cliq
+     * Send message via Cliq webhook
      */
-    private void sendToAllEmployees(String message) {
+    private void sendNotification(String message) {
         if (cliqWebhookUrl == null || cliqWebhookUrl.isEmpty()) {
-            log.warn("Cliq webhook URL not configured. Message: {}", message);
-            sendViaCliqChannel(message);
+            log.warn("Cliq webhook URL not configured. Message not sent: {}", message);
             return;
         }
         
@@ -107,39 +103,46 @@ public class CliqNotificationService {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             
+            // Zoho Cliq webhook expects "text" field for the message
             Map<String, Object> payload = new HashMap<>();
             payload.put("text", message);
             
+            // Optional: Add bot name
+            Map<String, Object> bot = new HashMap<>();
+            bot.put("name", "Food Pool Bot");
+            bot.put("image", "https://img.icons8.com/color/96/meal.png");
+            payload.put("bot", bot);
+            
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
+            
+            log.info("Sending Cliq notification to webhook...");
             ResponseEntity<String> response = restTemplate.postForEntity(cliqWebhookUrl, request, String.class);
             
             if (response.getStatusCode().is2xxSuccessful()) {
-                log.info("Cliq notification sent successfully");
+                log.info("✓ Cliq notification sent successfully");
             } else {
-                log.error("Cliq notification failed: {}", response.getStatusCode());
+                log.error("✗ Cliq notification failed: {} - {}", response.getStatusCode(), response.getBody());
             }
         } catch (Exception e) {
-            log.error("Error sending Cliq notification: {}", e.getMessage());
+            log.error("✗ Error sending Cliq notification: {}", e.getMessage(), e);
         }
     }
     
     /**
-     * Send to Cliq channel using incoming webhook
+     * Test the webhook connection
      */
-    private void sendViaCliqChannel(String message) {
-        // This is a fallback - log the message for now
-        log.info("CLIQ NOTIFICATION (webhook not configured): {}", message);
-    }
-    
-    /**
-     * Send personal message to specific employee
-     */
-    public void sendToEmployee(Employee employee, String message) {
-        if (employee.getEmail() == null) return;
+    public boolean testWebhook() {
+        if (cliqWebhookUrl == null || cliqWebhookUrl.isEmpty()) {
+            return false;
+        }
         
-        // For personal messages, you'd use Cliq Bot API
-        // For now, we'll rely on channel/webhook notifications
-        log.debug("Personal notification to {}: {}", employee.getEmail(), message);
+        try {
+            String testMessage = "🔔 *Food Pool Bot Connected!*\n\nThis is a test message to confirm the webhook is working.";
+            sendNotification(testMessage);
+            return true;
+        } catch (Exception e) {
+            log.error("Webhook test failed: {}", e.getMessage());
+            return false;
+        }
     }
 }
-

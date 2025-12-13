@@ -38,10 +38,8 @@ app:
   admin-emails: admin@encipherhealth.com,hr@encipherhealth.com
   base-url: http://food.management.encipherhealth.com
   cliq:
-    # Configure Zoho Cliq incoming webhook URL for notifications
-    # Create webhook at: Cliq > Bots > Incoming Webhooks
-    webhook-url: ${CLIQ_WEBHOOK_URL:}
-    bot-token: ${CLIQ_BOT_TOKEN:}
+    # Zoho Cliq incoming webhook for notifications
+    webhook-url: https://cliq.zoho.in/api/v2/webhooks/incoming/1001.df6a6e9f3491348c1dc1ff8f876f655b.ac81841f303707e3ab74160a50d8d240
 
 logging:
   level:
