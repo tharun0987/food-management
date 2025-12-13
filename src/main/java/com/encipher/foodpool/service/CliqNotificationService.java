@@ -19,13 +19,8 @@ public class CliqNotificationService {
     
     private final RestTemplate restTemplate = new RestTemplate();
     
-    // Channel API endpoint
-    @Value("${app.cliq.channel-url:https://cliq.zoho.in/company/60023432224/api/v2/channelsbyname/foodtest/message}")
-    private String cliqChannelUrl;
-    
-    // OAuth token
-    @Value("${app.cliq.oauth-token:1001.df6a6e9f3491348c1dc1ff8f876f655b.ac81841f303707e3ab74160a50d8d240}")
-    private String oauthToken;
+    @Value("${app.cliq.webhook-url:}")
+    private String webhookUrl;
     
     @Value("${app.base-url:http://food.management.encipherhealth.com}")
     private String appBaseUrl;
@@ -124,35 +119,33 @@ public class CliqNotificationService {
     // ============== CORE SEND METHOD ==============
     
     private void sendNotification(String message) {
-        if (oauthToken == null || oauthToken.isEmpty()) {
-            log.warn("Cliq OAuth token not configured. Message not sent.");
-            return;
+        if (webhookUrl == null || webhookUrl.isEmpty()) {
+            log.warn("Cliq webhook URL not configured");
+            throw new RuntimeException("Webhook URL not configured");
         }
         
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("Authorization", "Zoho-oauthtoken " + oauthToken);
             
-            // Zoho Cliq channel message format
+            // Bot incoming webhook format
             Map<String, Object> payload = new HashMap<>();
             payload.put("text", message);
             
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
             
-            log.info("Sending Cliq notification to channel: foodtest");
-            log.debug("URL: {}", cliqChannelUrl);
+            log.info("Sending notification to Cliq bot...");
             
-            ResponseEntity<String> response = restTemplate.postForEntity(cliqChannelUrl, request, String.class);
+            ResponseEntity<String> response = restTemplate.postForEntity(webhookUrl, request, String.class);
             
             if (response.getStatusCode().is2xxSuccessful()) {
-                log.info("Cliq notification sent successfully");
+                log.info("Notification sent successfully");
             } else {
-                log.error("Cliq notification failed: {} - {}", response.getStatusCode(), response.getBody());
-                throw new RuntimeException("Notification failed: " + response.getStatusCode());
+                log.error("Notification failed: {} - {}", response.getStatusCode(), response.getBody());
+                throw new RuntimeException("Failed: " + response.getStatusCode());
             }
         } catch (Exception e) {
-            log.error("Error sending Cliq notification: {}", e.getMessage());
+            log.error("Error sending notification: {}", e.getMessage());
             throw new RuntimeException("Failed to send notification: " + e.getMessage());
         }
     }
