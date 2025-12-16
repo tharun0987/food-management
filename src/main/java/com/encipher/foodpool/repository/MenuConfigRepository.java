@@ -9,6 +9,9 @@ import java.util.Optional;
 
 @Repository
 public interface MenuConfigRepository extends MongoRepository<MenuConfig, String> {
+    // Find by survey date (the date menu config was created)
     Optional<MenuConfig> findByDate(LocalDate date);
+    
+    // Find by food date (when food will be served)
+    Optional<MenuConfig> findByFoodDate(LocalDate foodDate);
 }
-

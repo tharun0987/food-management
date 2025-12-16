@@ -14,6 +14,10 @@
         .container{max-width:500px;margin:0 auto;padding:20px}
         h2{text-align:center;margin:20px 0;font-size:1.3rem}
         
+        .food-date-banner{background:linear-gradient(135deg,#667eea,#764ba2);padding:15px 20px;border-radius:12px;text-align:center;margin-bottom:20px}
+        .food-date-banner .label{font-size:0.8rem;color:rgba(255,255,255,0.7);margin-bottom:5px}
+        .food-date-banner .date{font-size:1.2rem;font-weight:600}
+        
         .status-card{border-radius:16px;padding:25px;text-align:center;margin:20px 0}
         .status-card.closed{background:rgba(255,170,0,0.1);border:2px solid #ffaa00}
         .status-card.unavailable{background:rgba(255,82,82,0.1);border:2px solid #ff5252}
@@ -50,7 +54,7 @@
         .back-link{display:block;text-align:center;margin-top:20px;color:rgba(255,255,255,0.5);text-decoration:none}
         .back-link:hover{color:#fff}
         
-        .scan-link{display:block;width:100%;padding:15px;background:linear-gradient(135deg,#00d9ff,#00ff88);color:#000;font-weight:600;text-decoration:none;text-align:center;border-radius:12px;margin-top:15px}
+        .info-text{text-align:center;color:rgba(255,255,255,0.5);font-size:0.85rem;margin:15px 0;padding:15px;background:rgba(255,255,255,0.03);border-radius:10px}
     </style>
 </head>
 <body>
@@ -60,27 +64,35 @@
 </div>
 
 <div class="container">
+    <!-- Food Date Banner -->
+    <div th:if="${menu.poolOpen}" class="food-date-banner">
+        <div class="label">Food will be served on</div>
+        <div class="date" th:text="${foodDateFormatted}">Tomorrow</div>
+    </div>
+    
     <!-- Already Pooled - LOCKED -->
     <div th:if="${alreadyPooled}" class="status-card locked">
         <div class="status-icon">🔒</div>
         <div class="status-title">Choice Locked!</div>
         <div class="status-desc">
-            You've registered for today's food pool.<br>
+            You've registered for food on <strong th:text="${foodDateFormatted}">the food date</strong>.<br>
             Your choice cannot be changed until the pool ends.
         </div>
         <div class="status-type" th:classappend="${pooledType}">
-            <span th:if="${pooledType == 'veg'}">🥗 Vegetarian</span>
-            <span th:if="${pooledType == 'nonveg'}">🍗 Non-Veg</span>
+            <span th:if="${pooledType == 'veg'}">Vegetarian</span>
+            <span th:if="${pooledType == 'nonveg'}">Non-Veg</span>
         </div>
-        <a href="/scan" class="scan-link" style="margin-top:20px">📷 Scan QR to Collect Food</a>
+        <p class="info-text">
+            Come back on <strong th:text="${foodDateFormatted}">the food date</strong> to scan QR and collect your food.
+        </p>
         <a href="/home" class="back-link">← Back to Home</a>
     </div>
     
     <!-- Food Not Available -->
     <div th:if="${!alreadyPooled && !menu.foodAvailable}" class="status-card unavailable">
         <div class="status-icon">🚫</div>
-        <div class="status-title">No Food Today</div>
-        <div class="status-desc">Food is not available today. Check back tomorrow!</div>
+        <div class="status-title">No Food Survey Today</div>
+        <div class="status-desc">Food survey is not available today. Check back later!</div>
         <a href="/home" class="back-link">← Back to Home</a>
     </div>
     
@@ -94,7 +106,7 @@
     
     <!-- Pool Open - Show Options -->
     <div th:if="${!alreadyPooled && menu.foodAvailable && menu.poolOpen}">
-        <h2>Select Your Meal 🍽️</h2>
+        <h2>Select Your Meal</h2>
         
         <div id="message" class="message hidden"></div>
         
@@ -105,10 +117,10 @@
                  onclick="selectFood('veg')">
                 <div class="food-icon">🥗</div>
                 <div class="food-label">Vegetarian</div>
-                <div th:if="${menu.vegAvailable}" class="food-status available">✓ Available</div>
+                <div th:if="${menu.vegAvailable}" class="food-status available">Available</div>
                 <div th:unless="${menu.vegAvailable}" class="food-status unavailable">Not Available</div>
                 <div class="food-dishes" th:if="${menu.vegAvailable}">
-                    <span th:if="${#lists.isEmpty(menu.vegItems)}">Enjoy your meal! 🍽️</span>
+                    <span th:if="${#lists.isEmpty(menu.vegItems)}">Enjoy your meal!</span>
                     <span th:unless="${#lists.isEmpty(menu.vegItems)}" th:text="${#strings.listJoin(menu.vegItems, ', ')}"></span>
                 </div>
             </div>
@@ -119,17 +131,18 @@
                  onclick="selectFood('nonveg')">
                 <div class="food-icon">🍗</div>
                 <div class="food-label">Non-Veg</div>
-                <div th:if="${menu.nonvegAvailable}" class="food-status available">✓ Available</div>
+                <div th:if="${menu.nonvegAvailable}" class="food-status available">Available</div>
                 <div th:unless="${menu.nonvegAvailable}" class="food-status unavailable">Not Available</div>
                 <div class="food-dishes" th:if="${menu.nonvegAvailable}">
-                    <span th:if="${#lists.isEmpty(menu.nonvegItems)}">Enjoy your meal! 🍽️</span>
+                    <span th:if="${#lists.isEmpty(menu.nonvegItems)}">Enjoy your meal!</span>
                     <span th:unless="${#lists.isEmpty(menu.nonvegItems)}" th:text="${#strings.listJoin(menu.nonvegItems, ', ')}"></span>
                 </div>
             </div>
         </div>
         
-        <p style="text-align:center;color:rgba(255,255,255,0.5);font-size:0.8rem;margin:15px 0">
-            ⚠️ Once you register, your choice will be locked until the pool ends.
+        <p class="info-text">
+            You are voting for food on <strong th:text="${foodDateFormatted}">the food date</strong>.<br>
+            Once you register, your choice will be locked until the pool ends.
         </p>
         
         <button id="submitBtn" class="submit-btn" onclick="submitPool()" disabled>
@@ -154,7 +167,7 @@
         
         const btn = document.getElementById('submitBtn');
         btn.disabled = false;
-        btn.textContent = 'Register for ' + (type === 'veg' ? 'Vegetarian 🥗' : 'Non-Veg 🍗');
+        btn.textContent = 'Register for ' + (type === 'veg' ? 'Vegetarian' : 'Non-Veg');
     }
     
     async function submitPool() {
@@ -180,12 +193,12 @@
             
             if (data.success) {
                 msg.className = 'message success';
-                msg.textContent = '✅ ' + data.message;
+                msg.textContent = data.message;
                 msg.classList.remove('hidden');
                 setTimeout(() => window.location.href = '/home', 1500);
             } else {
                 msg.className = 'message error';
-                msg.textContent = '❌ ' + data.error;
+                msg.textContent = data.error;
                 msg.classList.remove('hidden');
                 btn.disabled = false;
                 btn.textContent = 'Try Again';

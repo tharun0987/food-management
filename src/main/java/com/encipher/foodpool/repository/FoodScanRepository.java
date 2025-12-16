@@ -10,9 +10,15 @@ import java.util.Optional;
 
 @Repository
 public interface FoodScanRepository extends MongoRepository<FoodScan, String> {
+    // By scan date
     Optional<FoodScan> findByEmployeeIdAndDate(String employeeId, LocalDate date);
     List<FoodScan> findByDate(LocalDate date);
     long countByDate(LocalDate date);
     List<FoodScan> findByDateOrderByScanTimeDesc(LocalDate date);
+    
+    // By food date
+    Optional<FoodScan> findByEmployeeIdAndFoodDate(String employeeId, LocalDate foodDate);
+    List<FoodScan> findByFoodDate(LocalDate foodDate);
+    long countByFoodDate(LocalDate foodDate);
+    List<FoodScan> findByFoodDateOrderByScanTimeDesc(LocalDate foodDate);
 }
-

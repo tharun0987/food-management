@@ -12,6 +12,11 @@
         .back{color:#fff;text-decoration:none;font-size:1.5rem}
         .title{font-size:1.1rem;font-weight:600}
         .container{max-width:500px;margin:0 auto;padding:20px}
+        
+        .date-banner{background:linear-gradient(135deg,#667eea,#764ba2);padding:15px 20px;border-radius:12px;text-align:center;margin-bottom:20px}
+        .date-banner .label{font-size:0.8rem;color:rgba(255,255,255,0.7);margin-bottom:5px}
+        .date-banner .date{font-size:1.1rem;font-weight:600}
+        
         .camera-box{background:#000;border-radius:16px;overflow:hidden;aspect-ratio:1;position:relative;margin:20px 0}
         video{width:100%;height:100%;object-fit:cover}
         .overlay{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
@@ -41,20 +46,39 @@
 <body>
 <div class="header">
     <a href="/home" class="back">←</a>
-    <span class="title">Scan QR to Collect Food</span>
+    <span class="title">Collect Your Food</span>
 </div>
 
 <div class="container">
-    <!-- Not Pooled -->
-    <div th:if="${!hasPooled}" class="status warning">
-        <h3>⚠️ Not Registered</h3>
-        <p>You haven't registered for food pool today.</p>
-        <a href="/pool" class="btn btn-primary" style="margin-top:15px">Register Now</a>
+    <!-- Date Banner -->
+    <div class="date-banner">
+        <div class="label">Today's Date</div>
+        <div class="date" th:text="${todayFormatted}">Today</div>
+    </div>
+    
+    <!-- Not a Food Collection Day -->
+    <div th:if="${!isFoodCollectionDay && !hasPooled}" class="status warning">
+        <h3>No Food Collection Today</h3>
+        <p>Today is not a scheduled food collection day.</p>
+        <p style="margin-top:10px;font-size:0.85rem;color:rgba(255,255,255,0.5)">
+            Food can only be collected on the scheduled food date after registering in the pool.
+        </p>
+        <a href="/pool" class="btn btn-primary" style="margin-top:15px">Check Food Pool</a>
+    </div>
+    
+    <!-- Not Pooled for Today -->
+    <div th:if="${!hasPooled && isFoodCollectionDay}" class="status warning">
+        <h3>Not Registered for Today</h3>
+        <p>You are not registered for food collection today.</p>
+        <p style="margin-top:10px;font-size:0.85rem;color:rgba(255,255,255,0.5)">
+            You can only collect food on the date you registered for.
+        </p>
+        <a href="/pool" class="btn btn-primary" style="margin-top:15px">Check Current Pool</a>
     </div>
     
     <!-- Already Collected -->
     <div th:if="${hasPooled && hasCollected}" class="status success">
-        <h3>✓ Food Collected</h3>
+        <h3>Food Collected</h3>
         <p>You've already collected your <strong th:text="${pooledType}" style="text-transform:uppercase"></strong> meal today.</p>
         <a href="/home" class="btn btn-secondary" style="margin-top:15px">Back to Home</a>
     </div>
@@ -62,7 +86,7 @@
     <!-- Ready to Scan -->
     <div th:if="${hasPooled && !hasCollected}" id="scanSection">
         <div class="status info">
-            <p>Registered for: <strong th:text="${pooledType}" style="text-transform:uppercase"></strong></p>
+            <p>Ready to collect: <strong th:text="${pooledType}" style="text-transform:uppercase"></strong></p>
         </div>
         
         <div class="camera-box" id="cameraBox">
@@ -75,23 +99,23 @@
         </div>
         
         <div id="cameraError" class="camera-error hidden">
-            <h3>📷 Camera Access Required</h3>
+            <h3>Camera Access Required</h3>
             <p id="errorMessage">Unable to access camera</p>
             <div class="permission-guide">
                 <h4>How to enable camera:</h4>
                 <ul>
-                    <li><strong>iOS Safari:</strong> Settings → Safari → Camera → Allow</li>
-                    <li><strong>Android Chrome:</strong> Tap lock icon in address bar → Site settings → Camera → Allow</li>
-                    <li><strong>Desktop:</strong> Click camera icon in address bar → Allow</li>
+                    <li><strong>iOS Safari:</strong> Settings - Safari - Camera - Allow</li>
+                    <li><strong>Android Chrome:</strong> Tap lock icon in address bar - Site settings - Camera - Allow</li>
+                    <li><strong>Desktop:</strong> Click camera icon in address bar - Allow</li>
                 </ul>
             </div>
-            <button onclick="retryCamera()" class="btn btn-primary">🔄 Try Again</button>
+            <button onclick="retryCamera()" class="btn btn-primary">Try Again</button>
         </div>
         
-        <button onclick="startCamera()" class="btn btn-primary" id="startBtn">📷 Start Camera</button>
+        <button onclick="startCamera()" class="btn btn-primary" id="startBtn">Start Camera</button>
         
         <div id="result" class="status success hidden">
-            <h3>✓ Food Collected!</h3>
+            <h3>Food Collected!</h3>
             <p id="resultMsg"></p>
             <a href="/home" class="btn btn-secondary" style="margin-top:15px">Back to Home</a>
         </div>
@@ -263,14 +287,14 @@
                 document.getElementById('result').classList.remove('hidden');
             } else {
                 if (cameraBox) {
-                    cameraBox.innerHTML = '<div class="camera-error"><h3>❌ Error</h3><p>' + data.error + '</p></div>';
+                    cameraBox.innerHTML = '<div class="camera-error"><h3>Error</h3><p>' + data.error + '</p></div>';
                 }
                 setTimeout(() => location.reload(), 2000);
             }
         } catch (e) {
             console.error('API error:', e);
             if (cameraBox) {
-                cameraBox.innerHTML = '<div class="camera-error"><h3>❌ Network Error</h3><p>Please check your connection and try again.</p></div>';
+                cameraBox.innerHTML = '<div class="camera-error"><h3>Network Error</h3><p>Please check your connection and try again.</p></div>';
             }
             setTimeout(() => location.reload(), 2000);
         }

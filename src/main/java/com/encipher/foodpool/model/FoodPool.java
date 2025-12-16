@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.CompoundIndexes;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -14,7 +15,10 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Document(collection = "food_pools")
-@CompoundIndex(name = "employee_date_idx", def = "{'employeeId': 1, 'date': 1}", unique = true)
+@CompoundIndexes({
+    @CompoundIndex(name = "employee_date_idx", def = "{'employeeId': 1, 'date': 1}", unique = true),
+    @CompoundIndex(name = "employee_fooddate_idx", def = "{'employeeId': 1, 'foodDate': 1}")
+})
 public class FoodPool {
     @Id
     private String id;
@@ -25,7 +29,8 @@ public class FoodPool {
     
     private String foodType; // "veg" or "nonveg"
     
-    private LocalDate date;
+    private LocalDate date;         // Survey date (when user voted)
+    private LocalDate foodDate;     // Food date (when food will be collected)
     private LocalDateTime timestamp;
     
     public FoodPool(String employeeId, String employeeName, String employeeEmail, 

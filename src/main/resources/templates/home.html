@@ -18,9 +18,13 @@
         .container{max-width:500px;margin:0 auto;padding:20px}
         .greeting{font-size:1.4rem;margin:20px 0}
         
-        .status-card{background:rgba(255,255,255,0.05);border-radius:16px;padding:20px;margin:20px 0}
+        .food-date-banner{background:linear-gradient(135deg,#667eea,#764ba2);padding:15px 20px;border-radius:12px;text-align:center;margin-bottom:15px}
+        .food-date-banner .label{font-size:0.75rem;color:rgba(255,255,255,0.7);margin-bottom:3px}
+        .food-date-banner .date{font-size:1rem;font-weight:600}
+        
+        .status-card{background:rgba(255,255,255,0.05);border-radius:16px;padding:20px;margin:15px 0}
         .status-title{color:rgba(255,255,255,0.6);font-size:0.85rem;margin-bottom:10px}
-        .status-value{font-size:1.1rem;font-weight:500}
+        .status-value{font-size:1rem;font-weight:500}
         .status-value.success{color:#00ff88}
         .status-value.pending{color:#ffaa00}
         .status-value.closed{color:#ff5252}
@@ -29,8 +33,9 @@
         .pool-status.open{background:rgba(0,255,136,0.1);border:1px solid #00ff88}
         .pool-status.closed{background:rgba(255,170,0,0.1);border:1px solid #ffaa00}
         .pool-status.unavailable{background:rgba(255,82,82,0.1);border:1px solid #ff5252}
+        .pool-status.collection{background:rgba(0,217,255,0.1);border:1px solid #00d9ff}
         .pool-status-icon{font-size:1.5rem}
-        .pool-status-text{font-size:0.9rem}
+        .pool-status-text{font-size:0.85rem}
         
         .menu-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin:20px 0}
         .menu-item{background:rgba(255,255,255,0.05);border:2px solid transparent;border-radius:16px;padding:25px 15px;text-align:center;text-decoration:none;color:#fff;transition:all 0.3s}
@@ -39,9 +44,12 @@
         .menu-icon{font-size:35px;margin-bottom:10px}
         .menu-label{font-weight:500;font-size:0.9rem}
         .menu-item.admin{background:linear-gradient(135deg,rgba(233,69,96,0.2),rgba(255,107,107,0.1));grid-column:span 2}
+        .menu-item.highlight{border-color:#00ff88;background:rgba(0,255,136,0.1)}
         
         .logout{display:block;text-align:center;color:rgba(255,255,255,0.5);text-decoration:none;margin-top:30px;font-size:0.9rem}
         .logout:hover{color:#e94560}
+        
+        .section-title{font-size:0.8rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;margin:20px 0 10px}
     </style>
 </head>
 <body>
@@ -57,43 +65,74 @@
 </div>
 
 <div class="container">
-    <h2 class="greeting">Hello, <span th:text="${employeeName}">User</span>! 👋</h2>
+    <h2 class="greeting">Hello, <span th:text="${employeeName}">User</span>!</h2>
+    
+    <!-- VOTING Section -->
+    <div class="section-title">Food Pool Survey</div>
+    
+    <!-- Food Date Banner when pool is open -->
+    <div th:if="${poolOpen}" class="food-date-banner">
+        <div class="label">Food will be served on</div>
+        <div class="date" th:text="${foodDateFormatted}">Tomorrow</div>
+    </div>
     
     <!-- Pool Status Banner -->
     <div th:if="${!foodAvailable}" class="pool-status unavailable">
         <span class="pool-status-icon">🚫</span>
-        <span class="pool-status-text">No food available today</span>
+        <span class="pool-status-text">No survey today</span>
     </div>
-    <div th:if="${foodAvailable && poolOpen}" class="pool-status open">
+    <div th:if="${foodAvailable && poolOpen && !hasPooled}" class="pool-status open">
+        <span class="pool-status-icon">📝</span>
+        <span class="pool-status-text">Pool is open! Register now for <span th:text="${foodDateFormatted}">food date</span></span>
+    </div>
+    <div th:if="${foodAvailable && poolOpen && hasPooled}" class="pool-status open">
         <span class="pool-status-icon">✅</span>
-        <span class="pool-status-text">Pool is open! Register now</span>
+        <span class="pool-status-text">Registered for <span th:text="${pooledType}" style="text-transform:uppercase"></span> on <span th:text="${foodDateFormatted}">food date</span></span>
     </div>
     <div th:if="${foodAvailable && !poolOpen}" class="pool-status closed">
         <span class="pool-status-icon">⏳</span>
         <span class="pool-status-text">Survey not started yet</span>
     </div>
     
-    <!-- Today's Status -->
-    <div class="status-card">
-        <div class="status-title">Your Status Today</div>
-        <div th:if="${hasPooled}" class="status-value success">
-            ✓ Registered for <span th:text="${pooledType}" style="text-transform:uppercase"></span>
-            <span th:if="${hasCollected}"> • ✓ Collected</span>
-        </div>
-        <div th:unless="${hasPooled}" class="status-value pending">
-            ⏳ Not registered yet
-        </div>
-    </div>
-    
-    <!-- Menu -->
+    <!-- Register Menu -->
     <div class="menu-grid">
-        <a href="/pool" class="menu-item" th:classappend="${!foodAvailable || !poolOpen} ? 'disabled'">
+        <a href="/pool" class="menu-item" 
+           th:classappend="${(!foodAvailable || !poolOpen || hasPooled) ? 'disabled' : 'highlight'}">
             <div class="menu-icon">📝</div>
             <div class="menu-label">Register for<br>Food Pool</div>
         </a>
-        <a href="/scan" class="menu-item" th:classappend="${!hasPooled} ? 'disabled'">
+        <div class="menu-item disabled" style="cursor:default">
+            <div class="menu-icon" th:if="${hasPooled}">✅</div>
+            <div class="menu-icon" th:unless="${hasPooled}">⏳</div>
+            <div class="menu-label" th:if="${hasPooled}">Registered:<br><span th:text="${pooledType}" style="text-transform:uppercase"></span></div>
+            <div class="menu-label" th:unless="${hasPooled}">Not<br>Registered</div>
+        </div>
+    </div>
+    
+    <!-- COLLECTION Section -->
+    <div class="section-title">Food Collection</div>
+    
+    <!-- Collection Status -->
+    <div th:if="${canCollectToday && !hasCollected}" class="pool-status collection">
+        <span class="pool-status-icon">🍽️</span>
+        <span class="pool-status-text">Your food is ready! Scan QR to collect <span th:text="${collectPooledType}" style="text-transform:uppercase"></span></span>
+    </div>
+    <div th:if="${canCollectToday && hasCollected}" class="pool-status open">
+        <span class="pool-status-icon">✅</span>
+        <span class="pool-status-text">Food collected! Enjoy your meal</span>
+    </div>
+    <div th:if="${!canCollectToday}" class="pool-status closed">
+        <span class="pool-status-icon">📅</span>
+        <span class="pool-status-text">No food to collect today</span>
+    </div>
+    
+    <!-- Scan Menu -->
+    <div class="menu-grid">
+        <a href="/scan" class="menu-item" 
+           th:classappend="${(!canCollectToday || hasCollected) ? 'disabled' : 'highlight'}"
+           style="grid-column: span 2">
             <div class="menu-icon">📱</div>
-            <div class="menu-label">Scan QR<br>to Collect</div>
+            <div class="menu-label">Scan QR to Collect Food</div>
         </a>
     </div>
     

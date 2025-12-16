@@ -10,6 +10,9 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+
 @Controller
 @RequiredArgsConstructor
 @Slf4j
@@ -44,21 +47,44 @@ public class MainController {
         model.addAttribute("isAdmin", isAdmin != null && isAdmin);
         model.addAttribute("email", user.getAttribute("Email"));
         
-        // Today's menu status
+        LocalDate today = LocalDate.now();
+        
+        // Today's menu status (for voting)
         MenuConfig menu = foodPoolService.getTodayMenu();
         model.addAttribute("foodAvailable", menu.isFoodAvailable());
         model.addAttribute("poolOpen", menu.isPoolOpen());
         
-        // Today's registration status
-        boolean pooled = foodPoolService.hasPooledToday(employeeId);
-        boolean collected = foodPoolService.hasCollectedToday(employeeId);
+        // Food date from survey
+        LocalDate foodDate = menu.getFoodDate() != null ? menu.getFoodDate() : today.plusDays(1);
+        model.addAttribute("foodDate", foodDate);
+        model.addAttribute("foodDateFormatted", foodDate.format(DateTimeFormatter.ofPattern("EEEE, MMM d")));
         
-        model.addAttribute("hasPooled", pooled);
+        // Check if today is a food collection day
+        boolean isFoodCollectionDay = foodPoolService.isFoodCollectionDay();
+        model.addAttribute("isFoodCollectionDay", isFoodCollectionDay);
+        
+        // Check if user has pooled for the food date (from today's survey or if today IS the food date)
+        boolean pooledForFoodDate = foodPoolService.hasPooledForFoodDate(employeeId, foodDate);
+        model.addAttribute("hasPooled", pooledForFoodDate);
+        
+        // Check if user can collect today (today must be the food date)
+        boolean canCollectToday = foodPoolService.hasPooledForFoodDate(employeeId, today);
+        model.addAttribute("canCollectToday", canCollectToday);
+        
+        // Check if already collected today
+        boolean collected = foodPoolService.hasCollectedForFoodDate(employeeId, today);
         model.addAttribute("hasCollected", collected);
         
-        if (pooled) {
-            foodPoolService.getPoolForToday(employeeId).ifPresent(pool -> {
+        if (pooledForFoodDate) {
+            foodPoolService.getPoolForFoodDate(employeeId, foodDate).ifPresent(pool -> {
                 model.addAttribute("pooledType", pool.getFoodType());
+            });
+        }
+        
+        // For collection day - get pool info
+        if (canCollectToday) {
+            foodPoolService.getPoolForFoodDate(employeeId, today).ifPresent(pool -> {
+                model.addAttribute("collectPooledType", pool.getFoodType());
             });
         }
         
@@ -75,16 +101,23 @@ public class MainController {
         model.addAttribute("employeeId", employeeId);
         model.addAttribute("employeeName", employeeName);
         
+        LocalDate today = LocalDate.now();
+        
         // Get menu
         MenuConfig menu = foodPoolService.getTodayMenu();
         model.addAttribute("menu", menu);
         
-        // Check if already pooled
-        boolean alreadyPooled = foodPoolService.hasPooledToday(employeeId);
+        // Food date from survey
+        LocalDate foodDate = menu.getFoodDate() != null ? menu.getFoodDate() : today.plusDays(1);
+        model.addAttribute("foodDate", foodDate);
+        model.addAttribute("foodDateFormatted", foodDate.format(DateTimeFormatter.ofPattern("EEEE, MMM d, yyyy")));
+        
+        // Check if already pooled for the food date
+        boolean alreadyPooled = foodPoolService.hasPooledForFoodDate(employeeId, foodDate);
         model.addAttribute("alreadyPooled", alreadyPooled);
         
         if (alreadyPooled) {
-            foodPoolService.getPoolForToday(employeeId).ifPresent(pool -> {
+            foodPoolService.getPoolForFoodDate(employeeId, foodDate).ifPresent(pool -> {
                 model.addAttribute("pooledType", pool.getFoodType());
             });
         }
@@ -102,15 +135,24 @@ public class MainController {
         model.addAttribute("employeeId", employeeId);
         model.addAttribute("employeeName", employeeName);
         
-        // Check pool status
-        boolean pooled = foodPoolService.hasPooledToday(employeeId);
-        boolean collected = foodPoolService.hasCollectedToday(employeeId);
+        LocalDate today = LocalDate.now();
+        model.addAttribute("today", today);
+        model.addAttribute("todayFormatted", today.format(DateTimeFormatter.ofPattern("EEEE, MMM d, yyyy")));
         
-        model.addAttribute("hasPooled", pooled);
+        // Check if user has pool registration for TODAY (as food date)
+        boolean hasPoolForToday = foodPoolService.hasPooledForFoodDate(employeeId, today);
+        model.addAttribute("hasPooled", hasPoolForToday);
+        
+        // Check if already collected today
+        boolean collected = foodPoolService.hasCollectedForFoodDate(employeeId, today);
         model.addAttribute("hasCollected", collected);
         
-        if (pooled) {
-            foodPoolService.getPoolForToday(employeeId).ifPresent(pool -> {
+        // Check if today is even a food collection day
+        boolean isFoodCollectionDay = foodPoolService.isFoodCollectionDay();
+        model.addAttribute("isFoodCollectionDay", isFoodCollectionDay);
+        
+        if (hasPoolForToday) {
+            foodPoolService.getPoolForFoodDate(employeeId, today).ifPresent(pool -> {
                 model.addAttribute("pooledType", pool.getFoodType());
             });
         }
