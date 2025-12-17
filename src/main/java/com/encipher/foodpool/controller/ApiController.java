@@ -9,6 +9,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.Map;
 
 @RestController
@@ -89,24 +90,34 @@ public class ApiController {
         }
         
         String employeeId = user.getAttribute("employeeId");
+        LocalDate today = LocalDate.now();
         
-        boolean pooled = foodPoolService.hasPooledToday(employeeId);
+        // Check pool status for current survey's food date
+        boolean pooledForSurvey = foodPoolService.hasPooledForCurrentSurvey(employeeId);
+        
+        // Check collection status for today (if today is a food day)
         boolean collected = foodPoolService.hasCollectedToday(employeeId);
+        
+        // Check if pooled for today as food date (for collection)
+        boolean pooledForToday = foodPoolService.hasPooledForFoodDate(employeeId, today);
+        
         MenuConfig menu = foodPoolService.getTodayMenu();
         
         String foodType = null;
-        if (pooled) {
-            foodType = foodPoolService.getPoolForToday(employeeId)
+        if (pooledForSurvey) {
+            foodType = foodPoolService.getPoolForCurrentSurvey(employeeId)
                     .map(FoodPool::getFoodType).orElse(null);
         }
         
         return ResponseEntity.ok(Map.of(
-                "pooled", pooled,
+                "pooled", pooledForSurvey,
+                "pooledForToday", pooledForToday,
                 "collected", collected,
                 "foodType", foodType != null ? foodType : "",
                 "vegAvailable", menu.isVegAvailable(),
-                "nonvegAvailable", menu.isNonvegAvailable()
+                "nonvegAvailable", menu.isNonvegAvailable(),
+                "poolOpen", menu.isPoolOpen(),
+                "isFoodCollectionDay", foodPoolService.isFoodCollectionDay()
         ));
     }
 }
-
