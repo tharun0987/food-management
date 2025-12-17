@@ -25,6 +25,7 @@ public class FoodScan {
     
     private String employeeId;
     private String employeeName;
+    private String employeeEmail;
     private String foodType;
     
     private LocalDate date;         // Scan date (when food was collected)
@@ -35,15 +36,16 @@ public class FoodScan {
     
     private boolean didVote;        // Track if employee voted before collecting
     
-    public FoodScan(String employeeId, String employeeName, String foodType, 
-                    LocalDate date, String qrData) {
+    public FoodScan(String employeeId, String employeeName, String employeeEmail, 
+                    String foodType, LocalDate date, String qrData) {
         this.employeeId = employeeId;
         this.employeeName = employeeName;
+        this.employeeEmail = employeeEmail;
         this.foodType = foodType;
         this.date = date;
         this.foodDate = date;
         this.scanTime = LocalDateTime.now();
         this.qrData = qrData;
-        this.didVote = true; // Default
+        this.didVote = true;
     }
 }

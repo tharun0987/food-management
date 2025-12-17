@@ -421,6 +421,7 @@ public class FoodPoolService {
         FoodScan scan = new FoodScan(
                 employee.getEmployeeId(),
                 employee.getName(),
+                employee.getEmail(),
                 foodType,
                 today,
                 qrData

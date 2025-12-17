@@ -255,15 +255,14 @@ public class AdminController {
             headerStyle.setFillForegroundColor(IndexedColors.TEAL.getIndex());
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
             
-            CellStyle boldStyle = workbook.createCellStyle();
-            Font boldFont = workbook.createFont();
-            boldFont.setBold(true);
-            boldStyle.setFont(boldFont);
-            
             // Fetch all data in batch
             List<FoodPool> allPools = foodPoolService.getPoolsForDateRange(start, end);
             List<FoodScan> allScans = foodPoolService.getScansForDateRange(start, end);
-            long totalEmployees = employeeService.getAllActiveEmployees().size();
+            List<Employee> allEmployees = employeeService.getAllActiveEmployees();
+            
+            // Create email lookup from employees
+            Map<String, String> emailLookup = allEmployees.stream()
+                    .collect(Collectors.toMap(Employee::getEmployeeId, e -> e.getEmail() != null ? e.getEmail() : "", (a, b) -> a));
             
             // Group by date
             Map<LocalDate, List<FoodPool>> poolsByDate = allPools.stream()
@@ -278,40 +277,10 @@ public class AdminController {
             allDates.addAll(poolsByDate.keySet());
             allDates.addAll(scansByDate.keySet());
             
-            // ============== SUMMARY SHEET ==============
-            Sheet summarySheet = workbook.createSheet("Summary");
-            int rowNum = 0;
-            
-            createRow(summarySheet, rowNum++, boldStyle, "Food Pool Report");
-            createRow(summarySheet, rowNum++, null, "Generated: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
-            rowNum++;
-            createRow(summarySheet, rowNum++, boldStyle, "Date Range");
-            createRow(summarySheet, rowNum++, null, "From", start.toString());
-            createRow(summarySheet, rowNum++, null, "To", end.toString());
-            createRow(summarySheet, rowNum++, null, "Total Days in Range", String.valueOf(ChronoUnit.DAYS.between(start, end) + 1));
-            rowNum++;
-            createRow(summarySheet, rowNum++, boldStyle, "Overview");
-            createRow(summarySheet, rowNum++, null, "Days with Voting", String.valueOf(poolsByDate.size()));
-            createRow(summarySheet, rowNum++, null, "Days with Collection", String.valueOf(scansByDate.size()));
-            createRow(summarySheet, rowNum++, null, "Total Employees", String.valueOf(totalEmployees));
-            rowNum++;
-            createRow(summarySheet, rowNum++, boldStyle, "Voting Statistics");
-            createRow(summarySheet, rowNum++, null, "Total Votes", String.valueOf(allPools.size()));
-            createRow(summarySheet, rowNum++, null, "Veg Votes", String.valueOf(allPools.stream().filter(p -> "veg".equals(p.getFoodType())).count()));
-            createRow(summarySheet, rowNum++, null, "Non-Veg Votes", String.valueOf(allPools.stream().filter(p -> "nonveg".equals(p.getFoodType())).count()));
-            rowNum++;
-            createRow(summarySheet, rowNum++, boldStyle, "Collection Statistics");
-            createRow(summarySheet, rowNum++, null, "Total Collections", String.valueOf(allScans.size()));
-            createRow(summarySheet, rowNum++, null, "Collected (Voted)", String.valueOf(allScans.stream().filter(FoodScan::isDidVote).count()));
-            createRow(summarySheet, rowNum++, null, "Collected (Did Not Vote)", String.valueOf(allScans.stream().filter(s -> !s.isDidVote()).count()));
-            
-            summarySheet.autoSizeColumn(0);
-            summarySheet.autoSizeColumn(1);
-            
-            // ============== DAILY SUMMARY SHEET ==============
+            // ============== SHEET 1: DAILY SUMMARY ==============
             Sheet dailySheet = workbook.createSheet("Daily Summary");
             Row dailyHeader = dailySheet.createRow(0);
-            String[] dailyHeaders = {"Date", "Day", "Vote Day", "Collection Day", "Veg", "Non-Veg", "Total Voted", "Collected", "Collected (Voted)", "Collected (No Vote)"};
+            String[] dailyHeaders = {"Date", "Day", "Veg Voted", "Non-Veg Voted", "Total Voted", "Collected"};
             for (int i = 0; i < dailyHeaders.length; i++) {
                 Cell cell = dailyHeader.createCell(i);
                 cell.setCellValue(dailyHeaders[i]);
@@ -326,24 +295,20 @@ public class AdminController {
                 Row row = dailySheet.createRow(dailyRowNum++);
                 row.createCell(0).setCellValue(date.toString());
                 row.createCell(1).setCellValue(date.format(DateTimeFormatter.ofPattern("EEEE")));
-                row.createCell(2).setCellValue(dayPools.isEmpty() ? "No" : "Yes");
-                row.createCell(3).setCellValue(dayScans.isEmpty() ? "No" : "Yes");
-                row.createCell(4).setCellValue(dayPools.stream().filter(p -> "veg".equals(p.getFoodType())).count());
-                row.createCell(5).setCellValue(dayPools.stream().filter(p -> "nonveg".equals(p.getFoodType())).count());
-                row.createCell(6).setCellValue(dayPools.size());
-                row.createCell(7).setCellValue(dayScans.size());
-                row.createCell(8).setCellValue(dayScans.stream().filter(FoodScan::isDidVote).count());
-                row.createCell(9).setCellValue(dayScans.stream().filter(s -> !s.isDidVote()).count());
+                row.createCell(2).setCellValue(dayPools.stream().filter(p -> "veg".equals(p.getFoodType())).count());
+                row.createCell(3).setCellValue(dayPools.stream().filter(p -> "nonveg".equals(p.getFoodType())).count());
+                row.createCell(4).setCellValue(dayPools.size());
+                row.createCell(5).setCellValue(dayScans.size());
             }
             
             for (int i = 0; i < dailyHeaders.length; i++) {
                 dailySheet.autoSizeColumn(i);
             }
             
-            // ============== ALL VOTES SHEET (with names and emails) ==============
-            Sheet votesSheet = workbook.createSheet("All Votes - Details");
+            // ============== SHEET 2: WHO VOTED ==============
+            Sheet votesSheet = workbook.createSheet("Who Voted");
             Row votesHeader = votesSheet.createRow(0);
-            String[] voteHeaders = {"Food Date", "Employee ID", "Employee Name", "Email", "Food Type", "Vote Time"};
+            String[] voteHeaders = {"Date", "Employee ID", "Name", "Email", "Choice"};
             for (int i = 0; i < voteHeaders.length; i++) {
                 Cell cell = votesHeader.createCell(i);
                 cell.setCellValue(voteHeaders[i]);
@@ -356,20 +321,23 @@ public class AdminController {
                 row.createCell(0).setCellValue(pool.getFoodDate() != null ? pool.getFoodDate().toString() : "");
                 row.createCell(1).setCellValue(pool.getEmployeeId());
                 row.createCell(2).setCellValue(pool.getEmployeeName());
-                row.createCell(3).setCellValue(pool.getEmployeeEmail() != null ? pool.getEmployeeEmail() : "");
+                // Get email from pool or lookup
+                String email = pool.getEmployeeEmail();
+                if (email == null || email.isEmpty()) {
+                    email = emailLookup.getOrDefault(pool.getEmployeeId(), "");
+                }
+                row.createCell(3).setCellValue(email);
                 row.createCell(4).setCellValue(pool.getFoodType() != null ? pool.getFoodType().toUpperCase() : "");
-                row.createCell(5).setCellValue(pool.getTimestamp() != null ? 
-                        pool.getTimestamp().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) : "");
             }
             
             for (int i = 0; i < voteHeaders.length; i++) {
                 votesSheet.autoSizeColumn(i);
             }
             
-            // ============== ALL COLLECTIONS SHEET (with names) ==============
-            Sheet collectionsSheet = workbook.createSheet("All Collections - Details");
+            // ============== SHEET 3: WHO COLLECTED ==============
+            Sheet collectionsSheet = workbook.createSheet("Who Collected");
             Row collectionsHeader = collectionsSheet.createRow(0);
-            String[] collectionHeaders = {"Food Date", "Employee ID", "Employee Name", "Food Type", "Voted?", "Collection Time"};
+            String[] collectionHeaders = {"Date", "Employee ID", "Name", "Email", "Food Type", "Had Voted"};
             for (int i = 0; i < collectionHeaders.length; i++) {
                 Cell cell = collectionsHeader.createCell(i);
                 cell.setCellValue(collectionHeaders[i]);
@@ -382,50 +350,18 @@ public class AdminController {
                 row.createCell(0).setCellValue(scan.getFoodDate() != null ? scan.getFoodDate().toString() : "");
                 row.createCell(1).setCellValue(scan.getEmployeeId());
                 row.createCell(2).setCellValue(scan.getEmployeeName());
-                row.createCell(3).setCellValue(scan.getFoodType() != null ? scan.getFoodType().toUpperCase() : "UNKNOWN");
-                row.createCell(4).setCellValue(scan.isDidVote() ? "Yes" : "No");
-                row.createCell(5).setCellValue(scan.getScanTime() != null ? 
-                        scan.getScanTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) : "");
+                // Get email from scan or lookup
+                String email = scan.getEmployeeEmail();
+                if (email == null || email.isEmpty()) {
+                    email = emailLookup.getOrDefault(scan.getEmployeeId(), "");
+                }
+                row.createCell(3).setCellValue(email);
+                row.createCell(4).setCellValue(scan.getFoodType() != null ? scan.getFoodType().toUpperCase() : "UNKNOWN");
+                row.createCell(5).setCellValue(scan.isDidVote() ? "Yes" : "No");
             }
             
             for (int i = 0; i < collectionHeaders.length; i++) {
                 collectionsSheet.autoSizeColumn(i);
-            }
-            
-            // ============== PARTICIPATION LIST (unique employees who voted) ==============
-            Sheet participantsSheet = workbook.createSheet("Participants");
-            Row participantsHeader = participantsSheet.createRow(0);
-            String[] participantHeaders = {"Employee ID", "Employee Name", "Email", "Total Votes", "Veg Votes", "Non-Veg Votes", "Times Collected"};
-            for (int i = 0; i < participantHeaders.length; i++) {
-                Cell cell = participantsHeader.createCell(i);
-                cell.setCellValue(participantHeaders[i]);
-                cell.setCellStyle(headerStyle);
-            }
-            
-            // Group by employee
-            Map<String, List<FoodPool>> poolsByEmployee = allPools.stream()
-                    .collect(Collectors.groupingBy(FoodPool::getEmployeeId));
-            Map<String, Long> scanCountByEmployee = allScans.stream()
-                    .collect(Collectors.groupingBy(FoodScan::getEmployeeId, Collectors.counting()));
-            
-            int participantRowNum = 1;
-            for (Map.Entry<String, List<FoodPool>> entry : poolsByEmployee.entrySet()) {
-                String empId = entry.getKey();
-                List<FoodPool> empPools = entry.getValue();
-                FoodPool firstPool = empPools.get(0);
-                
-                Row row = participantsSheet.createRow(participantRowNum++);
-                row.createCell(0).setCellValue(empId);
-                row.createCell(1).setCellValue(firstPool.getEmployeeName());
-                row.createCell(2).setCellValue(firstPool.getEmployeeEmail() != null ? firstPool.getEmployeeEmail() : "");
-                row.createCell(3).setCellValue(empPools.size());
-                row.createCell(4).setCellValue(empPools.stream().filter(p -> "veg".equals(p.getFoodType())).count());
-                row.createCell(5).setCellValue(empPools.stream().filter(p -> "nonveg".equals(p.getFoodType())).count());
-                row.createCell(6).setCellValue(scanCountByEmployee.getOrDefault(empId, 0L));
-            }
-            
-            for (int i = 0; i < participantHeaders.length; i++) {
-                participantsSheet.autoSizeColumn(i);
             }
             
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
