@@ -23,4 +23,9 @@ public interface FoodPoolRepository extends MongoRepository<FoodPool, String> {
     List<FoodPool> findByFoodDateOrderByTimestampDesc(LocalDate foodDate);
     long countByFoodDateAndFoodType(LocalDate foodDate, String foodType);
     List<FoodPool> findByFoodDateAndFoodType(LocalDate foodDate, String foodType);
+    
+    // Date range queries for reports
+    List<FoodPool> findByFoodDateBetweenOrderByFoodDateAscTimestampDesc(LocalDate startDate, LocalDate endDate);
+    List<FoodPool> findByDateBetweenOrderByDateAscTimestampDesc(LocalDate startDate, LocalDate endDate);
+    long countByFoodDateBetween(LocalDate startDate, LocalDate endDate);
 }

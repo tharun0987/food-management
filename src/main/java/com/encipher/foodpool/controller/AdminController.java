@@ -22,6 +22,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/admin")
@@ -84,13 +85,6 @@ public class AdminController {
             model.addAttribute("collectionCollected", collectionStats.get("collected"));
             model.addAttribute("collectionWithVote", collectionStats.getOrDefault("collectedWithVote", 0L));
             model.addAttribute("collectionWithoutVote", collectionStats.getOrDefault("collectedWithoutVote", 0L));
-            
-            long collTotal = collectionStats.get("total");
-            long collCollected = collectionStats.get("collected");
-            model.addAttribute("collectionPercent", collTotal > 0 ? (collCollected * 100 / collTotal) : 0);
-            
-            model.addAttribute("collectionPools", foodPoolService.getPoolsForFoodDate(today));
-            model.addAttribute("collectionScans", foodPoolService.getTodayScans());
         }
         
         // Current Survey Stats
@@ -98,16 +92,14 @@ public class AdminController {
         model.addAttribute("surveyVegCount", surveyStats.get("veg"));
         model.addAttribute("surveyNonvegCount", surveyStats.get("nonveg"));
         model.addAttribute("surveyTotalVoted", surveyStats.get("total"));
-        model.addAttribute("surveyPools", foodPoolService.getPoolsForFoodDate(surveyFoodDate));
         
         long totalEmployees = employeeService.getAllActiveEmployees().size();
         model.addAttribute("totalEmployees", totalEmployees);
         
         long surveyTotal = surveyStats.get("total");
         model.addAttribute("surveyNotVoted", Math.max(0, totalEmployees - surveyTotal));
-        model.addAttribute("surveyParticipationPercent", totalEmployees > 0 ? (surveyTotal * 100 / totalEmployees) : 0);
         
-        // Date Range Report
+        // Date Range Report - Optimized
         LocalDate start = today.minusDays(30);
         LocalDate end = today;
         
@@ -121,8 +113,8 @@ public class AdminController {
         model.addAttribute("startDate", start.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
         model.addAttribute("endDate", end.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
         
-        // Generate report for date range
-        Map<String, Object> report = generateReport(start, end);
+        // Generate optimized report
+        Map<String, Object> report = generateOptimizedReport(start, end, totalEmployees);
         model.addAttribute("report", report);
         
         model.addAttribute("today", today.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
@@ -131,37 +123,88 @@ public class AdminController {
         return "admin/dashboard";
     }
     
-    // ============== REPORTS PAGE ==============
+    // ============== OPTIMIZED REPORT GENERATION ==============
     
-    @GetMapping("/reports")
-    public String reportsPage(
-            @AuthenticationPrincipal OAuth2User user,
-            @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate,
-            Model model) {
-        addCommonAttributes(user, model);
+    private Map<String, Object> generateOptimizedReport(LocalDate start, LocalDate end, long totalEmployees) {
+        // Fetch all data in ONE query each
+        List<FoodPool> allPools = foodPoolService.getPoolsForDateRange(start, end);
+        List<FoodScan> allScans = foodPoolService.getScansForDateRange(start, end);
         
-        LocalDate today = LocalDate.now();
-        LocalDate start = today.minusDays(30);
-        LocalDate end = today;
+        // Group by food date
+        Map<LocalDate, List<FoodPool>> poolsByDate = allPools.stream()
+                .filter(p -> p.getFoodDate() != null)
+                .collect(Collectors.groupingBy(FoodPool::getFoodDate));
         
-        if (startDate != null && !startDate.isEmpty()) {
-            try { start = LocalDate.parse(startDate); } catch (Exception e) {}
+        Map<LocalDate, List<FoodScan>> scansByDate = allScans.stream()
+                .filter(s -> s.getFoodDate() != null)
+                .collect(Collectors.groupingBy(FoodScan::getFoodDate));
+        
+        // Get all unique dates with activity
+        Set<LocalDate> allDates = new TreeSet<>();
+        allDates.addAll(poolsByDate.keySet());
+        allDates.addAll(scansByDate.keySet());
+        
+        // Calculate stats
+        int voteDays = poolsByDate.size();
+        int collectionDays = scansByDate.size();
+        
+        long totalVoted = allPools.size();
+        long totalVeg = allPools.stream().filter(p -> "veg".equals(p.getFoodType())).count();
+        long totalNonveg = allPools.stream().filter(p -> "nonveg".equals(p.getFoodType())).count();
+        long totalCollected = allScans.size();
+        long totalCollectedWithVote = allScans.stream().filter(FoodScan::isDidVote).count();
+        long totalCollectedWithoutVote = allScans.stream().filter(s -> !s.isDidVote()).count();
+        
+        // Daily breakdown
+        List<Map<String, Object>> dailyData = new ArrayList<>();
+        for (LocalDate date : allDates) {
+            List<FoodPool> dayPools = poolsByDate.getOrDefault(date, Collections.emptyList());
+            List<FoodScan> dayScans = scansByDate.getOrDefault(date, Collections.emptyList());
+            
+            long dayVeg = dayPools.stream().filter(p -> "veg".equals(p.getFoodType())).count();
+            long dayNonveg = dayPools.stream().filter(p -> "nonveg".equals(p.getFoodType())).count();
+            long dayVoted = dayPools.size();
+            long dayCollected = dayScans.size();
+            long dayCollectedWithVote = dayScans.stream().filter(FoodScan::isDidVote).count();
+            long dayCollectedWithoutVote = dayScans.stream().filter(s -> !s.isDidVote()).count();
+            
+            Map<String, Object> dayData = new HashMap<>();
+            dayData.put("date", date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+            dayData.put("dateDisplay", date.format(DateTimeFormatter.ofPattern("MMM dd, EEE")));
+            dayData.put("veg", dayVeg);
+            dayData.put("nonveg", dayNonveg);
+            dayData.put("totalVoted", dayVoted);
+            dayData.put("notVoted", Math.max(0, totalEmployees - dayVoted));
+            dayData.put("collected", dayCollected);
+            dayData.put("collectedWithVote", dayCollectedWithVote);
+            dayData.put("collectedWithoutVote", dayCollectedWithoutVote);
+            dayData.put("notCollected", Math.max(0, dayVoted - dayCollected));
+            dayData.put("isVoteDay", !dayPools.isEmpty());
+            dayData.put("isCollectionDay", !dayScans.isEmpty());
+            
+            dailyData.add(dayData);
         }
-        if (endDate != null && !endDate.isEmpty()) {
-            try { end = LocalDate.parse(endDate); } catch (Exception e) {}
-        }
         
-        model.addAttribute("startDate", start.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
-        model.addAttribute("endDate", end.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
-        model.addAttribute("startDateDisplay", start.format(DateTimeFormatter.ofPattern("MMM dd, yyyy")));
-        model.addAttribute("endDateDisplay", end.format(DateTimeFormatter.ofPattern("MMM dd, yyyy")));
+        Map<String, Object> report = new HashMap<>();
+        report.put("startDate", start.format(DateTimeFormatter.ofPattern("MMM dd, yyyy")));
+        report.put("endDate", end.format(DateTimeFormatter.ofPattern("MMM dd, yyyy")));
+        report.put("totalDays", ChronoUnit.DAYS.between(start, end) + 1);
+        report.put("foodPoolDays", allDates.size());
+        report.put("voteDays", voteDays);
+        report.put("collectionDays", collectionDays);
+        report.put("totalEmployees", totalEmployees);
+        report.put("totalVoted", totalVoted);
+        report.put("totalVeg", totalVeg);
+        report.put("totalNonveg", totalNonveg);
+        report.put("totalCollected", totalCollected);
+        report.put("totalCollectedWithVote", totalCollectedWithVote);
+        report.put("totalCollectedWithoutVote", totalCollectedWithoutVote);
+        report.put("totalNotCollected", Math.max(0, totalVoted - totalCollected));
+        report.put("avgParticipation", voteDays > 0 ? (totalVoted / voteDays) : 0);
+        report.put("avgCollection", collectionDays > 0 ? (totalCollected / collectionDays) : 0);
+        report.put("dailyData", dailyData);
         
-        // Get report data
-        Map<String, Object> report = generateReport(start, end);
-        model.addAttribute("report", report);
-        
-        return "admin/reports";
+        return report;
     }
     
     @GetMapping("/reports/data")
@@ -172,84 +215,12 @@ public class AdminController {
         try {
             LocalDate start = LocalDate.parse(startDate);
             LocalDate end = LocalDate.parse(endDate);
-            Map<String, Object> report = generateReport(start, end);
+            long totalEmployees = employeeService.getAllActiveEmployees().size();
+            Map<String, Object> report = generateOptimizedReport(start, end, totalEmployees);
             return ResponseEntity.ok(report);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
-    }
-    
-    private Map<String, Object> generateReport(LocalDate start, LocalDate end) {
-        long totalEmployees = employeeService.getAllActiveEmployees().size();
-        
-        int foodPoolDays = 0;
-        long totalVoted = 0;
-        long totalVeg = 0;
-        long totalNonveg = 0;
-        long totalCollected = 0;
-        long totalCollectedWithVote = 0;
-        long totalCollectedWithoutVote = 0;
-        long totalNotVoted = 0;
-        long totalNotCollected = 0;
-        
-        List<Map<String, Object>> dailyData = new ArrayList<>();
-        
-        LocalDate current = start;
-        while (!current.isAfter(end)) {
-            Map<String, Long> stats = foodPoolService.getStatsForFoodDate(current);
-            long dayTotal = stats.get("total");
-            long dayCollected = stats.get("collected");
-            
-            if (dayTotal > 0 || dayCollected > 0) {
-                foodPoolDays++;
-                totalVoted += dayTotal;
-                totalVeg += stats.get("veg");
-                totalNonveg += stats.get("nonveg");
-                totalCollected += dayCollected;
-                totalCollectedWithVote += stats.getOrDefault("collectedWithVote", 0L);
-                totalCollectedWithoutVote += stats.getOrDefault("collectedWithoutVote", 0L);
-                totalNotVoted += Math.max(0, totalEmployees - dayTotal);
-                totalNotCollected += Math.max(0, dayTotal - dayCollected);
-                
-                Map<String, Object> dayData = new HashMap<>();
-                dayData.put("date", current.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
-                dayData.put("dateDisplay", current.format(DateTimeFormatter.ofPattern("MMM dd, EEE")));
-                dayData.put("veg", stats.get("veg"));
-                dayData.put("nonveg", stats.get("nonveg"));
-                dayData.put("totalVoted", dayTotal);
-                dayData.put("notVoted", Math.max(0, totalEmployees - dayTotal));
-                dayData.put("collected", dayCollected);
-                dayData.put("collectedWithVote", stats.getOrDefault("collectedWithVote", 0L));
-                dayData.put("collectedWithoutVote", stats.getOrDefault("collectedWithoutVote", 0L));
-                dayData.put("notCollected", Math.max(0, dayTotal - dayCollected));
-                dayData.put("participationPercent", totalEmployees > 0 ? (dayTotal * 100 / totalEmployees) : 0);
-                dayData.put("collectionPercent", dayTotal > 0 ? (dayCollected * 100 / dayTotal) : 0);
-                
-                dailyData.add(dayData);
-            }
-            
-            current = current.plusDays(1);
-        }
-        
-        Map<String, Object> report = new HashMap<>();
-        report.put("startDate", start.format(DateTimeFormatter.ofPattern("MMM dd, yyyy")));
-        report.put("endDate", end.format(DateTimeFormatter.ofPattern("MMM dd, yyyy")));
-        report.put("totalDays", ChronoUnit.DAYS.between(start, end) + 1);
-        report.put("foodPoolDays", foodPoolDays);
-        report.put("totalEmployees", totalEmployees);
-        report.put("totalVoted", totalVoted);
-        report.put("totalVeg", totalVeg);
-        report.put("totalNonveg", totalNonveg);
-        report.put("totalNotVoted", totalNotVoted);
-        report.put("totalCollected", totalCollected);
-        report.put("totalCollectedWithVote", totalCollectedWithVote);
-        report.put("totalCollectedWithoutVote", totalCollectedWithoutVote);
-        report.put("totalNotCollected", totalNotCollected);
-        report.put("avgParticipation", foodPoolDays > 0 ? (totalVoted / foodPoolDays) : 0);
-        report.put("avgCollection", foodPoolDays > 0 ? (totalCollected / foodPoolDays) : 0);
-        report.put("dailyData", dailyData);
-        
-        return report;
     }
     
     @GetMapping("/reports/export")
@@ -260,7 +231,7 @@ public class AdminController {
             LocalDate start = LocalDate.parse(startDate);
             LocalDate end = LocalDate.parse(endDate);
             
-            byte[] excelData = generateExcelReport(start, end);
+            byte[] excelData = generateDetailedExcelReport(start, end);
             
             String filename = "food_pool_report_" + startDate + "_to_" + endDate + ".xlsx";
             
@@ -274,9 +245,9 @@ public class AdminController {
         }
     }
     
-    private byte[] generateExcelReport(LocalDate start, LocalDate end) throws Exception {
+    private byte[] generateDetailedExcelReport(LocalDate start, LocalDate end) throws Exception {
         try (Workbook workbook = new XSSFWorkbook()) {
-            // Create styles
+            // Styles
             CellStyle headerStyle = workbook.createCellStyle();
             Font headerFont = workbook.createFont();
             headerFont.setBold(true);
@@ -284,78 +255,95 @@ public class AdminController {
             headerStyle.setFillForegroundColor(IndexedColors.TEAL.getIndex());
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
             
-            CellStyle dateStyle = workbook.createCellStyle();
-            dateStyle.setDataFormat(workbook.createDataFormat().getFormat("yyyy-mm-dd"));
+            CellStyle boldStyle = workbook.createCellStyle();
+            Font boldFont = workbook.createFont();
+            boldFont.setBold(true);
+            boldStyle.setFont(boldFont);
             
+            // Fetch all data in batch
+            List<FoodPool> allPools = foodPoolService.getPoolsForDateRange(start, end);
+            List<FoodScan> allScans = foodPoolService.getScansForDateRange(start, end);
             long totalEmployees = employeeService.getAllActiveEmployees().size();
             
-            // Summary Sheet
-            Sheet summarySheet = workbook.createSheet("Summary");
-            Map<String, Object> report = generateReport(start, end);
+            // Group by date
+            Map<LocalDate, List<FoodPool>> poolsByDate = allPools.stream()
+                    .filter(p -> p.getFoodDate() != null)
+                    .collect(Collectors.groupingBy(FoodPool::getFoodDate));
             
+            Map<LocalDate, List<FoodScan>> scansByDate = allScans.stream()
+                    .filter(s -> s.getFoodDate() != null)
+                    .collect(Collectors.groupingBy(FoodScan::getFoodDate));
+            
+            Set<LocalDate> allDates = new TreeSet<>();
+            allDates.addAll(poolsByDate.keySet());
+            allDates.addAll(scansByDate.keySet());
+            
+            // ============== SUMMARY SHEET ==============
+            Sheet summarySheet = workbook.createSheet("Summary");
             int rowNum = 0;
-            createSummaryRow(summarySheet, rowNum++, "Food Pool Report", headerStyle);
-            createSummaryRow(summarySheet, rowNum++, "");
-            createSummaryRow(summarySheet, rowNum++, "Date Range", start + " to " + end);
-            createSummaryRow(summarySheet, rowNum++, "Total Days in Range", report.get("totalDays"));
-            createSummaryRow(summarySheet, rowNum++, "Days with Food Pool", report.get("foodPoolDays"));
-            createSummaryRow(summarySheet, rowNum++, "Total Employees", report.get("totalEmployees"));
-            createSummaryRow(summarySheet, rowNum++, "");
-            createSummaryRow(summarySheet, rowNum++, "Voting Statistics", headerStyle);
-            createSummaryRow(summarySheet, rowNum++, "Total Votes (all days)", report.get("totalVoted"));
-            createSummaryRow(summarySheet, rowNum++, "Total Veg Votes", report.get("totalVeg"));
-            createSummaryRow(summarySheet, rowNum++, "Total Non-Veg Votes", report.get("totalNonveg"));
-            createSummaryRow(summarySheet, rowNum++, "Average Participation per Day", report.get("avgParticipation"));
-            createSummaryRow(summarySheet, rowNum++, "");
-            createSummaryRow(summarySheet, rowNum++, "Collection Statistics", headerStyle);
-            createSummaryRow(summarySheet, rowNum++, "Total Collections (all days)", report.get("totalCollected"));
-            createSummaryRow(summarySheet, rowNum++, "Collected (with vote)", report.get("totalCollectedWithVote"));
-            createSummaryRow(summarySheet, rowNum++, "Collected (without vote)", report.get("totalCollectedWithoutVote"));
-            createSummaryRow(summarySheet, rowNum++, "Total Not Collected", report.get("totalNotCollected"));
-            createSummaryRow(summarySheet, rowNum++, "Average Collection per Day", report.get("avgCollection"));
+            
+            createRow(summarySheet, rowNum++, boldStyle, "Food Pool Report");
+            createRow(summarySheet, rowNum++, null, "Generated: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+            rowNum++;
+            createRow(summarySheet, rowNum++, boldStyle, "Date Range");
+            createRow(summarySheet, rowNum++, null, "From", start.toString());
+            createRow(summarySheet, rowNum++, null, "To", end.toString());
+            createRow(summarySheet, rowNum++, null, "Total Days in Range", String.valueOf(ChronoUnit.DAYS.between(start, end) + 1));
+            rowNum++;
+            createRow(summarySheet, rowNum++, boldStyle, "Overview");
+            createRow(summarySheet, rowNum++, null, "Days with Voting", String.valueOf(poolsByDate.size()));
+            createRow(summarySheet, rowNum++, null, "Days with Collection", String.valueOf(scansByDate.size()));
+            createRow(summarySheet, rowNum++, null, "Total Employees", String.valueOf(totalEmployees));
+            rowNum++;
+            createRow(summarySheet, rowNum++, boldStyle, "Voting Statistics");
+            createRow(summarySheet, rowNum++, null, "Total Votes", String.valueOf(allPools.size()));
+            createRow(summarySheet, rowNum++, null, "Veg Votes", String.valueOf(allPools.stream().filter(p -> "veg".equals(p.getFoodType())).count()));
+            createRow(summarySheet, rowNum++, null, "Non-Veg Votes", String.valueOf(allPools.stream().filter(p -> "nonveg".equals(p.getFoodType())).count()));
+            rowNum++;
+            createRow(summarySheet, rowNum++, boldStyle, "Collection Statistics");
+            createRow(summarySheet, rowNum++, null, "Total Collections", String.valueOf(allScans.size()));
+            createRow(summarySheet, rowNum++, null, "Collected (Voted)", String.valueOf(allScans.stream().filter(FoodScan::isDidVote).count()));
+            createRow(summarySheet, rowNum++, null, "Collected (Did Not Vote)", String.valueOf(allScans.stream().filter(s -> !s.isDidVote()).count()));
             
             summarySheet.autoSizeColumn(0);
             summarySheet.autoSizeColumn(1);
             
-            // Daily Data Sheet
-            Sheet dailySheet = workbook.createSheet("Daily Data");
-            Row headerRow = dailySheet.createRow(0);
-            String[] headers = {"Date", "Day", "Veg Votes", "Non-Veg Votes", "Total Voted", "Not Voted", 
-                               "Collected", "Collected (Voted)", "Collected (No Vote)", "Not Collected", 
-                               "Participation %", "Collection %"};
-            for (int i = 0; i < headers.length; i++) {
-                Cell cell = headerRow.createCell(i);
-                cell.setCellValue(headers[i]);
+            // ============== DAILY SUMMARY SHEET ==============
+            Sheet dailySheet = workbook.createSheet("Daily Summary");
+            Row dailyHeader = dailySheet.createRow(0);
+            String[] dailyHeaders = {"Date", "Day", "Vote Day", "Collection Day", "Veg", "Non-Veg", "Total Voted", "Collected", "Collected (Voted)", "Collected (No Vote)"};
+            for (int i = 0; i < dailyHeaders.length; i++) {
+                Cell cell = dailyHeader.createCell(i);
+                cell.setCellValue(dailyHeaders[i]);
                 cell.setCellStyle(headerStyle);
             }
             
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> dailyData = (List<Map<String, Object>>) report.get("dailyData");
-            int dataRowNum = 1;
-            for (Map<String, Object> day : dailyData) {
-                Row row = dailySheet.createRow(dataRowNum++);
-                row.createCell(0).setCellValue((String) day.get("date"));
-                row.createCell(1).setCellValue((String) day.get("dateDisplay"));
-                row.createCell(2).setCellValue(((Number) day.get("veg")).longValue());
-                row.createCell(3).setCellValue(((Number) day.get("nonveg")).longValue());
-                row.createCell(4).setCellValue(((Number) day.get("totalVoted")).longValue());
-                row.createCell(5).setCellValue(((Number) day.get("notVoted")).longValue());
-                row.createCell(6).setCellValue(((Number) day.get("collected")).longValue());
-                row.createCell(7).setCellValue(((Number) day.get("collectedWithVote")).longValue());
-                row.createCell(8).setCellValue(((Number) day.get("collectedWithoutVote")).longValue());
-                row.createCell(9).setCellValue(((Number) day.get("notCollected")).longValue());
-                row.createCell(10).setCellValue(((Number) day.get("participationPercent")).longValue() + "%");
-                row.createCell(11).setCellValue(((Number) day.get("collectionPercent")).longValue() + "%");
+            int dailyRowNum = 1;
+            for (LocalDate date : allDates) {
+                List<FoodPool> dayPools = poolsByDate.getOrDefault(date, Collections.emptyList());
+                List<FoodScan> dayScans = scansByDate.getOrDefault(date, Collections.emptyList());
+                
+                Row row = dailySheet.createRow(dailyRowNum++);
+                row.createCell(0).setCellValue(date.toString());
+                row.createCell(1).setCellValue(date.format(DateTimeFormatter.ofPattern("EEEE")));
+                row.createCell(2).setCellValue(dayPools.isEmpty() ? "No" : "Yes");
+                row.createCell(3).setCellValue(dayScans.isEmpty() ? "No" : "Yes");
+                row.createCell(4).setCellValue(dayPools.stream().filter(p -> "veg".equals(p.getFoodType())).count());
+                row.createCell(5).setCellValue(dayPools.stream().filter(p -> "nonveg".equals(p.getFoodType())).count());
+                row.createCell(6).setCellValue(dayPools.size());
+                row.createCell(7).setCellValue(dayScans.size());
+                row.createCell(8).setCellValue(dayScans.stream().filter(FoodScan::isDidVote).count());
+                row.createCell(9).setCellValue(dayScans.stream().filter(s -> !s.isDidVote()).count());
             }
             
-            for (int i = 0; i < headers.length; i++) {
+            for (int i = 0; i < dailyHeaders.length; i++) {
                 dailySheet.autoSizeColumn(i);
             }
             
-            // Detailed Votes Sheet
-            Sheet votesSheet = workbook.createSheet("All Votes");
+            // ============== ALL VOTES SHEET (with names and emails) ==============
+            Sheet votesSheet = workbook.createSheet("All Votes - Details");
             Row votesHeader = votesSheet.createRow(0);
-            String[] voteHeaders = {"Date", "Employee ID", "Employee Name", "Food Type", "Vote Time"};
+            String[] voteHeaders = {"Food Date", "Employee ID", "Employee Name", "Email", "Food Type", "Vote Time"};
             for (int i = 0; i < voteHeaders.length; i++) {
                 Cell cell = votesHeader.createCell(i);
                 cell.setCellValue(voteHeaders[i]);
@@ -363,29 +351,25 @@ public class AdminController {
             }
             
             int voteRowNum = 1;
-            LocalDate current = start;
-            while (!current.isAfter(end)) {
-                List<FoodPool> pools = foodPoolService.getPoolsForFoodDate(current);
-                for (FoodPool pool : pools) {
-                    Row row = votesSheet.createRow(voteRowNum++);
-                    row.createCell(0).setCellValue(current.toString());
-                    row.createCell(1).setCellValue(pool.getEmployeeId());
-                    row.createCell(2).setCellValue(pool.getEmployeeName());
-                    row.createCell(3).setCellValue(pool.getFoodType().toUpperCase());
-                    row.createCell(4).setCellValue(pool.getTimestamp() != null ? 
-                            pool.getTimestamp().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) : "");
-                }
-                current = current.plusDays(1);
+            for (FoodPool pool : allPools) {
+                Row row = votesSheet.createRow(voteRowNum++);
+                row.createCell(0).setCellValue(pool.getFoodDate() != null ? pool.getFoodDate().toString() : "");
+                row.createCell(1).setCellValue(pool.getEmployeeId());
+                row.createCell(2).setCellValue(pool.getEmployeeName());
+                row.createCell(3).setCellValue(pool.getEmployeeEmail() != null ? pool.getEmployeeEmail() : "");
+                row.createCell(4).setCellValue(pool.getFoodType() != null ? pool.getFoodType().toUpperCase() : "");
+                row.createCell(5).setCellValue(pool.getTimestamp() != null ? 
+                        pool.getTimestamp().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) : "");
             }
             
             for (int i = 0; i < voteHeaders.length; i++) {
                 votesSheet.autoSizeColumn(i);
             }
             
-            // Detailed Collections Sheet
-            Sheet collectionsSheet = workbook.createSheet("All Collections");
+            // ============== ALL COLLECTIONS SHEET (with names) ==============
+            Sheet collectionsSheet = workbook.createSheet("All Collections - Details");
             Row collectionsHeader = collectionsSheet.createRow(0);
-            String[] collectionHeaders = {"Date", "Employee ID", "Employee Name", "Food Type", "Voted?", "Collection Time"};
+            String[] collectionHeaders = {"Food Date", "Employee ID", "Employee Name", "Food Type", "Voted?", "Collection Time"};
             for (int i = 0; i < collectionHeaders.length; i++) {
                 Cell cell = collectionsHeader.createCell(i);
                 cell.setCellValue(collectionHeaders[i]);
@@ -393,24 +377,55 @@ public class AdminController {
             }
             
             int collectionRowNum = 1;
-            current = start;
-            while (!current.isAfter(end)) {
-                List<FoodScan> scans = foodPoolService.getScansForFoodDate(current);
-                for (FoodScan scan : scans) {
-                    Row row = collectionsSheet.createRow(collectionRowNum++);
-                    row.createCell(0).setCellValue(current.toString());
-                    row.createCell(1).setCellValue(scan.getEmployeeId());
-                    row.createCell(2).setCellValue(scan.getEmployeeName());
-                    row.createCell(3).setCellValue(scan.getFoodType() != null ? scan.getFoodType().toUpperCase() : "UNKNOWN");
-                    row.createCell(4).setCellValue(scan.isDidVote() ? "Yes" : "No");
-                    row.createCell(5).setCellValue(scan.getScanTime() != null ? 
-                            scan.getScanTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) : "");
-                }
-                current = current.plusDays(1);
+            for (FoodScan scan : allScans) {
+                Row row = collectionsSheet.createRow(collectionRowNum++);
+                row.createCell(0).setCellValue(scan.getFoodDate() != null ? scan.getFoodDate().toString() : "");
+                row.createCell(1).setCellValue(scan.getEmployeeId());
+                row.createCell(2).setCellValue(scan.getEmployeeName());
+                row.createCell(3).setCellValue(scan.getFoodType() != null ? scan.getFoodType().toUpperCase() : "UNKNOWN");
+                row.createCell(4).setCellValue(scan.isDidVote() ? "Yes" : "No");
+                row.createCell(5).setCellValue(scan.getScanTime() != null ? 
+                        scan.getScanTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")) : "");
             }
             
             for (int i = 0; i < collectionHeaders.length; i++) {
                 collectionsSheet.autoSizeColumn(i);
+            }
+            
+            // ============== PARTICIPATION LIST (unique employees who voted) ==============
+            Sheet participantsSheet = workbook.createSheet("Participants");
+            Row participantsHeader = participantsSheet.createRow(0);
+            String[] participantHeaders = {"Employee ID", "Employee Name", "Email", "Total Votes", "Veg Votes", "Non-Veg Votes", "Times Collected"};
+            for (int i = 0; i < participantHeaders.length; i++) {
+                Cell cell = participantsHeader.createCell(i);
+                cell.setCellValue(participantHeaders[i]);
+                cell.setCellStyle(headerStyle);
+            }
+            
+            // Group by employee
+            Map<String, List<FoodPool>> poolsByEmployee = allPools.stream()
+                    .collect(Collectors.groupingBy(FoodPool::getEmployeeId));
+            Map<String, Long> scanCountByEmployee = allScans.stream()
+                    .collect(Collectors.groupingBy(FoodScan::getEmployeeId, Collectors.counting()));
+            
+            int participantRowNum = 1;
+            for (Map.Entry<String, List<FoodPool>> entry : poolsByEmployee.entrySet()) {
+                String empId = entry.getKey();
+                List<FoodPool> empPools = entry.getValue();
+                FoodPool firstPool = empPools.get(0);
+                
+                Row row = participantsSheet.createRow(participantRowNum++);
+                row.createCell(0).setCellValue(empId);
+                row.createCell(1).setCellValue(firstPool.getEmployeeName());
+                row.createCell(2).setCellValue(firstPool.getEmployeeEmail() != null ? firstPool.getEmployeeEmail() : "");
+                row.createCell(3).setCellValue(empPools.size());
+                row.createCell(4).setCellValue(empPools.stream().filter(p -> "veg".equals(p.getFoodType())).count());
+                row.createCell(5).setCellValue(empPools.stream().filter(p -> "nonveg".equals(p.getFoodType())).count());
+                row.createCell(6).setCellValue(scanCountByEmployee.getOrDefault(empId, 0L));
+            }
+            
+            for (int i = 0; i < participantHeaders.length; i++) {
+                participantsSheet.autoSizeColumn(i);
             }
             
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -419,35 +434,16 @@ public class AdminController {
         }
     }
     
-    private void createSummaryRow(Sheet sheet, int rowNum, String label) {
-        createSummaryRow(sheet, rowNum, label, null, null);
-    }
-    
-    private void createSummaryRow(Sheet sheet, int rowNum, String label, CellStyle style) {
-        createSummaryRow(sheet, rowNum, label, null, style);
-    }
-    
-    private void createSummaryRow(Sheet sheet, int rowNum, String label, Object value) {
-        createSummaryRow(sheet, rowNum, label, value, null);
-    }
-    
-    private void createSummaryRow(Sheet sheet, int rowNum, String label, Object value, CellStyle style) {
+    private void createRow(Sheet sheet, int rowNum, CellStyle style, String... values) {
         Row row = sheet.createRow(rowNum);
-        Cell labelCell = row.createCell(0);
-        labelCell.setCellValue(label);
-        if (style != null) labelCell.setCellStyle(style);
-        
-        if (value != null) {
-            Cell valueCell = row.createCell(1);
-            if (value instanceof Number) {
-                valueCell.setCellValue(((Number) value).doubleValue());
-            } else {
-                valueCell.setCellValue(value.toString());
-            }
+        for (int i = 0; i < values.length; i++) {
+            Cell cell = row.createCell(i);
+            cell.setCellValue(values[i]);
+            if (style != null) cell.setCellStyle(style);
         }
     }
     
-    // ============== EXISTING ENDPOINTS ==============
+    // ============== STATS API ==============
     
     @GetMapping("/stats/{date}")
     @ResponseBody
@@ -471,6 +467,8 @@ public class AdminController {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
+    
+    // ============== POOL CONTROL ==============
     
     @PostMapping("/pool/open")
     @ResponseBody
@@ -524,6 +522,8 @@ public class AdminController {
         }
     }
     
+    // ============== NOTIFICATIONS ==============
+    
     @PostMapping("/notify/participate")
     @ResponseBody
     public ResponseEntity<?> sendParticipateReminder(@AuthenticationPrincipal OAuth2User user) {
@@ -534,7 +534,7 @@ public class AdminController {
             return ResponseEntity.ok(Map.of("success", true, "message", "Reminder sent to participate in survey"));
         } catch (Exception e) {
             log.error("Failed to send participate reminder: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", "Failed to send notification: " + e.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", "Failed to send notification: " + e.getMessage()));
         }
     }
     
@@ -548,7 +548,7 @@ public class AdminController {
             return ResponseEntity.ok(Map.of("success", true, "message", "Reminder sent to collect food"));
         } catch (Exception e) {
             log.error("Failed to send eat reminder: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", "Failed to send notification: " + e.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", "Failed to send notification: " + e.getMessage()));
         }
     }
     
@@ -560,7 +560,7 @@ public class AdminController {
             return ResponseEntity.ok(Map.of("success", true, "message", "Last call reminder sent"));
         } catch (Exception e) {
             log.error("Failed to send last call reminder: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", "Failed to send notification: " + e.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", "Failed to send notification: " + e.getMessage()));
         }
     }
     
@@ -572,15 +572,17 @@ public class AdminController {
         try {
             String message = body.get("message");
             if (message == null || message.trim().isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Message cannot be empty"));
+                return ResponseEntity.badRequest().body(Map.of("success", false, "error", "Message cannot be empty"));
             }
             cliqNotificationService.sendCustomNotification(message);
             return ResponseEntity.ok(Map.of("success", true, "message", "Custom notification sent"));
         } catch (Exception e) {
             log.error("Failed to send custom notification: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", "Failed to send notification: " + e.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", "Failed to send notification: " + e.getMessage()));
         }
     }
+    
+    // ============== MENU ==============
     
     @GetMapping("/menu")
     public String menuPage(@AuthenticationPrincipal OAuth2User user, Model model) {
@@ -603,7 +605,9 @@ public class AdminController {
             boolean foodAvailable = (Boolean) body.getOrDefault("foodAvailable", false);
             boolean vegAvailable = (Boolean) body.getOrDefault("vegAvailable", false);
             boolean nonvegAvailable = (Boolean) body.getOrDefault("nonvegAvailable", false);
+            @SuppressWarnings("unchecked")
             List<String> vegItems = (List<String>) body.getOrDefault("vegItems", List.of());
+            @SuppressWarnings("unchecked")
             List<String> nonvegItems = (List<String>) body.getOrDefault("nonvegItems", List.of());
             
             String updatedBy = user.getAttribute("Email");
@@ -616,6 +620,8 @@ public class AdminController {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
+    
+    // ============== EMPLOYEES ==============
     
     @GetMapping("/employees")
     public String employees(@AuthenticationPrincipal OAuth2User user, Model model) {

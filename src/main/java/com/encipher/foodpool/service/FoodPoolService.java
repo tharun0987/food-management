@@ -9,10 +9,8 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -448,5 +446,44 @@ public class FoodPoolService {
      */
     public List<FoodScan> getTodayScans() {
         return getScansForFoodDate(LocalDate.now());
+    }
+    
+    // ============== BATCH QUERIES FOR REPORTS ==============
+    
+    /**
+     * Get all pools in a date range (by food date) - BATCH QUERY
+     */
+    public List<FoodPool> getPoolsForDateRange(LocalDate startDate, LocalDate endDate) {
+        return foodPoolRepository.findByFoodDateBetweenOrderByFoodDateAscTimestampDesc(startDate, endDate);
+    }
+    
+    /**
+     * Get all scans in a date range (by food date) - BATCH QUERY
+     */
+    public List<FoodScan> getScansForDateRange(LocalDate startDate, LocalDate endDate) {
+        return foodScanRepository.findByFoodDateBetweenOrderByFoodDateAscScanTimeDesc(startDate, endDate);
+    }
+    
+    /**
+     * Get unique food dates with activity in a date range
+     */
+    public Set<LocalDate> getFoodDatesWithActivity(LocalDate startDate, LocalDate endDate) {
+        Set<LocalDate> dates = new HashSet<>();
+        
+        List<FoodPool> pools = getPoolsForDateRange(startDate, endDate);
+        for (FoodPool pool : pools) {
+            if (pool.getFoodDate() != null) {
+                dates.add(pool.getFoodDate());
+            }
+        }
+        
+        List<FoodScan> scans = getScansForDateRange(startDate, endDate);
+        for (FoodScan scan : scans) {
+            if (scan.getFoodDate() != null) {
+                dates.add(scan.getFoodDate());
+            }
+        }
+        
+        return dates;
     }
 }
