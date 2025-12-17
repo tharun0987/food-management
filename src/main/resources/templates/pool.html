@@ -22,7 +22,7 @@
         .status-card.closed{background:rgba(255,170,0,0.1);border:2px solid #ffaa00}
         .status-card.unavailable{background:rgba(255,82,82,0.1);border:2px solid #ff5252}
         .status-card.success{background:rgba(0,255,136,0.1);border:2px solid #00ff88}
-        .status-card.locked{background:rgba(0,217,255,0.1);border:2px solid #00d9ff}
+        .status-card.changeable{background:rgba(0,217,255,0.1);border:2px solid #00d9ff}
         .status-icon{font-size:50px;margin-bottom:15px}
         .status-title{font-size:1.2rem;font-weight:600;margin-bottom:10px}
         .status-desc{color:rgba(255,255,255,0.6);font-size:0.9rem}
@@ -45,6 +45,7 @@
         .submit-btn{width:100%;padding:18px;background:linear-gradient(135deg,#e94560,#ff6b6b);border:none;border-radius:12px;color:#fff;font-size:1.1rem;font-weight:600;cursor:pointer;margin-top:20px;transition:all 0.3s}
         .submit-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 10px 30px rgba(233,69,96,0.3)}
         .submit-btn:disabled{opacity:0.5;cursor:not-allowed}
+        .submit-btn.change{background:linear-gradient(135deg,#00d9ff,#00ff88)}
         
         .message{padding:15px;border-radius:10px;margin:15px 0;text-align:center}
         .message.success{background:rgba(0,255,136,0.15);color:#00ff88}
@@ -55,6 +56,7 @@
         .back-link:hover{color:#fff}
         
         .info-text{text-align:center;color:rgba(255,255,255,0.5);font-size:0.85rem;margin:15px 0;padding:15px;background:rgba(255,255,255,0.03);border-radius:10px}
+        .change-hint{background:rgba(0,217,255,0.1);color:#00d9ff;padding:10px 15px;border-radius:8px;margin:15px 0;text-align:center;font-size:0.85rem}
     </style>
 </head>
 <body>
@@ -70,13 +72,61 @@
         <div class="date" th:text="${foodDateFormatted}">Tomorrow</div>
     </div>
     
-    <!-- Already Pooled - LOCKED -->
-    <div th:if="${alreadyPooled}" class="status-card locked">
+    <!-- Already Pooled but CAN CHANGE (pool still open) -->
+    <div th:if="${alreadyPooled && menu.poolOpen}">
+        <div class="status-card changeable">
+            <div class="status-icon">✓</div>
+            <div class="status-title">Currently Registered</div>
+            <div class="status-desc">
+                You've registered for food on <strong th:text="${foodDateFormatted}">the food date</strong>.
+            </div>
+            <div class="status-type" th:classappend="${pooledType}">
+                <span th:if="${pooledType == 'veg'}">Vegetarian</span>
+                <span th:if="${pooledType == 'nonveg'}">Non-Veg</span>
+            </div>
+        </div>
+        
+        <div class="change-hint">
+            Pool is still open! You can change your preference below.
+        </div>
+        
+        <h2>Change Your Preference</h2>
+        
+        <div id="message" class="message hidden"></div>
+        
+        <div class="food-options">
+            <div class="food-card" id="vegCard" 
+                 th:classappend="${!menu.vegAvailable} ? 'disabled' : (${pooledType == 'veg'} ? 'selected' : '')"
+                 onclick="selectFood('veg')">
+                <div class="food-icon">🥗</div>
+                <div class="food-label">Vegetarian</div>
+                <div th:if="${menu.vegAvailable}" class="food-status available">Available</div>
+                <div th:unless="${menu.vegAvailable}" class="food-status unavailable">Not Available</div>
+            </div>
+            
+            <div class="food-card" id="nonvegCard"
+                 th:classappend="${!menu.nonvegAvailable} ? 'disabled' : (${pooledType == 'nonveg'} ? 'selected' : '')"
+                 onclick="selectFood('nonveg')">
+                <div class="food-icon">🍗</div>
+                <div class="food-label">Non-Veg</div>
+                <div th:if="${menu.nonvegAvailable}" class="food-status available">Available</div>
+                <div th:unless="${menu.nonvegAvailable}" class="food-status unavailable">Not Available</div>
+            </div>
+        </div>
+        
+        <button id="submitBtn" class="submit-btn change" onclick="submitPool()" disabled>
+            Select a different option to change
+        </button>
+        
+        <a href="/home" class="back-link">← Back to Home</a>
+    </div>
+    
+    <!-- Already Pooled and CANNOT CHANGE (pool closed) -->
+    <div th:if="${alreadyPooled && !menu.poolOpen}" class="status-card success">
         <div class="status-icon">🔒</div>
-        <div class="status-title">Choice Locked!</div>
+        <div class="status-title">Registration Locked</div>
         <div class="status-desc">
-            You've registered for food on <strong th:text="${foodDateFormatted}">the food date</strong>.<br>
-            Your choice cannot be changed until the pool ends.
+            Pool is closed. Your choice for <strong th:text="${foodDateFormatted}">the food date</strong> is final.
         </div>
         <div class="status-type" th:classappend="${pooledType}">
             <span th:if="${pooledType == 'veg'}">Vegetarian</span>
@@ -104,14 +154,13 @@
         <a href="/home" class="back-link">← Back to Home</a>
     </div>
     
-    <!-- Pool Open - Show Options -->
+    <!-- Pool Open - Show Options (New Registration) -->
     <div th:if="${!alreadyPooled && menu.foodAvailable && menu.poolOpen}">
         <h2>Select Your Meal</h2>
         
         <div id="message" class="message hidden"></div>
         
         <div class="food-options">
-            <!-- Veg Option -->
             <div class="food-card" id="vegCard" 
                  th:classappend="${!menu.vegAvailable} ? 'disabled'"
                  onclick="selectFood('veg')">
@@ -125,7 +174,6 @@
                 </div>
             </div>
             
-            <!-- Non-Veg Option -->
             <div class="food-card" id="nonvegCard"
                  th:classappend="${!menu.nonvegAvailable} ? 'disabled'"
                  onclick="selectFood('nonveg')">
@@ -142,7 +190,7 @@
         
         <p class="info-text">
             You are voting for food on <strong th:text="${foodDateFormatted}">the food date</strong>.<br>
-            Once you register, your choice will be locked until the pool ends.
+            You can change your preference until the pool closes.
         </p>
         
         <button id="submitBtn" class="submit-btn" onclick="submitPool()" disabled>
@@ -155,6 +203,7 @@
     let selectedFood = null;
     const vegAvailable = [[${menu.vegAvailable}]];
     const nonvegAvailable = [[${menu.nonvegAvailable}]];
+    const currentChoice = [[${pooledType}]] || null;
     
     function selectFood(type) {
         if (type === 'veg' && !vegAvailable) return;
@@ -166,20 +215,31 @@
         document.getElementById(type + 'Card').classList.add('selected');
         
         const btn = document.getElementById('submitBtn');
-        btn.disabled = false;
-        btn.textContent = 'Register for ' + (type === 'veg' ? 'Vegetarian' : 'Non-Veg');
+        
+        if (currentChoice && currentChoice === type) {
+            btn.disabled = true;
+            btn.textContent = 'Already selected ' + (type === 'veg' ? 'Vegetarian' : 'Non-Veg');
+        } else {
+            btn.disabled = false;
+            if (currentChoice) {
+                btn.textContent = 'Change to ' + (type === 'veg' ? 'Vegetarian' : 'Non-Veg');
+            } else {
+                btn.textContent = 'Register for ' + (type === 'veg' ? 'Vegetarian' : 'Non-Veg');
+            }
+        }
     }
     
     async function submitPool() {
         if (!selectedFood) return;
         
-        if (!confirm('Are you sure? Your choice will be LOCKED and cannot be changed.')) {
+        const action = currentChoice ? 'change your preference' : 'register';
+        if (!confirm('Are you sure you want to ' + action + '?')) {
             return;
         }
         
         const btn = document.getElementById('submitBtn');
         btn.disabled = true;
-        btn.textContent = 'Registering...';
+        btn.textContent = currentChoice ? 'Changing...' : 'Registering...';
         
         try {
             const res = await fetch('/api/pool', {

@@ -3,148 +3,130 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Home | Encipher Food Pool</title>
+    <title>Food Pool | Encipher</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
-        body{font-family:'Poppins',sans-serif;background:#0f0f1a;min-height:100vh;color:#fff}
-        .header{background:linear-gradient(135deg,#1a1a2e,#16213e);padding:20px;display:flex;justify-content:space-between;align-items:center}
-        .logo{display:flex;align-items:center;gap:10px}
-        .logo-icon{width:40px;height:40px;background:linear-gradient(135deg,#e94560,#ff6b6b);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px}
-        .logo-text{font-weight:600}
-        .user-info{text-align:right;font-size:0.85rem}
-        .user-name{font-weight:600}
-        .user-id{color:rgba(255,255,255,0.5);font-size:0.75rem}
-        .container{max-width:500px;margin:0 auto;padding:20px}
-        .greeting{font-size:1.4rem;margin:20px 0}
+        body{font-family:'Poppins',sans-serif;background:#0f0f1a;min-height:100vh;display:flex;flex-direction:column}
+        .header{background:linear-gradient(135deg,#1a1a2e,#16213e);padding:20px;text-align:center}
+        .logo{font-size:1.5rem;font-weight:700;color:#fff}
+        .logo span{color:#e94560}
+        .container{flex:1;padding:20px;max-width:500px;margin:0 auto;width:100%}
+        .welcome{color:#fff;margin:20px 0}
+        .welcome h2{font-size:1.3rem;font-weight:600}
+        .welcome p{font-size:0.9rem;color:rgba(255,255,255,0.6);margin-top:5px}
         
-        .food-date-banner{background:linear-gradient(135deg,#667eea,#764ba2);padding:15px 20px;border-radius:12px;text-align:center;margin-bottom:15px}
-        .food-date-banner .label{font-size:0.75rem;color:rgba(255,255,255,0.7);margin-bottom:3px}
-        .food-date-banner .date{font-size:1rem;font-weight:600}
+        .food-date-banner{background:linear-gradient(135deg,#667eea,#764ba2);padding:20px;border-radius:12px;text-align:center;margin:20px 0}
+        .food-date-banner .label{font-size:0.8rem;color:rgba(255,255,255,0.7);margin-bottom:5px}
+        .food-date-banner .date{font-size:1.3rem;font-weight:700;color:#fff}
+        .food-date-banner .status{font-size:0.85rem;margin-top:10px;padding:5px 12px;border-radius:15px;display:inline-block}
+        .food-date-banner .status.pooling{background:rgba(0,255,136,0.2);color:#00ff88}
+        .food-date-banner .status.collection{background:rgba(0,217,255,0.2);color:#00d9ff}
         
-        .status-card{background:rgba(255,255,255,0.05);border-radius:16px;padding:20px;margin:15px 0}
-        .status-title{color:rgba(255,255,255,0.6);font-size:0.85rem;margin-bottom:10px}
-        .status-value{font-size:1rem;font-weight:500}
-        .status-value.success{color:#00ff88}
-        .status-value.pending{color:#ffaa00}
-        .status-value.closed{color:#ff5252}
+        .menu-grid{display:flex;flex-direction:column;gap:15px;margin-top:20px}
+        .menu-card{background:rgba(255,255,255,0.05);border-radius:16px;padding:25px;display:flex;align-items:center;gap:20px;text-decoration:none;color:#fff;transition:all 0.3s;border:2px solid transparent}
+        .menu-card:hover{border-color:rgba(255,255,255,0.2);transform:translateX(5px)}
+        .menu-card.active{border-color:#00ff88;background:rgba(0,255,136,0.1)}
+        .menu-card.disabled{opacity:0.4;pointer-events:none}
+        .menu-card.done{opacity:0.6;border-color:#00d9ff}
+        .menu-icon{font-size:40px}
+        .menu-info h3{font-size:1rem;font-weight:600;margin-bottom:5px}
+        .menu-info p{font-size:0.8rem;color:rgba(255,255,255,0.5)}
+        .menu-badge{margin-left:auto;padding:6px 12px;border-radius:20px;font-size:0.7rem;font-weight:600}
+        .menu-badge.open{background:rgba(0,255,136,0.2);color:#00ff88}
+        .menu-badge.closed{background:rgba(255,170,0,0.2);color:#ffaa00}
+        .menu-badge.voted{background:rgba(0,217,255,0.2);color:#00d9ff}
+        .menu-badge.collected{background:rgba(0,255,136,0.2);color:#00ff88}
+        .menu-badge.not-day{background:rgba(255,82,82,0.2);color:#ff5252}
         
-        .pool-status{display:flex;align-items:center;gap:10px;padding:15px;border-radius:12px;margin:15px 0}
-        .pool-status.open{background:rgba(0,255,136,0.1);border:1px solid #00ff88}
-        .pool-status.closed{background:rgba(255,170,0,0.1);border:1px solid #ffaa00}
-        .pool-status.unavailable{background:rgba(255,82,82,0.1);border:1px solid #ff5252}
-        .pool-status.collection{background:rgba(0,217,255,0.1);border:1px solid #00d9ff}
-        .pool-status-icon{font-size:1.5rem}
-        .pool-status-text{font-size:0.85rem}
+        .status-card{background:rgba(255,255,255,0.03);border-radius:12px;padding:15px;margin:15px 0;border:1px solid rgba(255,255,255,0.1)}
+        .status-card h4{font-size:0.85rem;color:rgba(255,255,255,0.6);margin-bottom:8px}
+        .status-card .value{font-size:1rem;font-weight:600;color:#00d9ff}
         
-        .menu-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin:20px 0}
-        .menu-item{background:rgba(255,255,255,0.05);border:2px solid transparent;border-radius:16px;padding:25px 15px;text-align:center;text-decoration:none;color:#fff;transition:all 0.3s}
-        .menu-item:hover:not(.disabled){border-color:#e94560;transform:translateY(-2px)}
-        .menu-item.disabled{opacity:0.4;pointer-events:none}
-        .menu-icon{font-size:35px;margin-bottom:10px}
-        .menu-label{font-weight:500;font-size:0.9rem}
-        .menu-item.admin{background:linear-gradient(135deg,rgba(233,69,96,0.2),rgba(255,107,107,0.1));grid-column:span 2}
-        .menu-item.highlight{border-color:#00ff88;background:rgba(0,255,136,0.1)}
+        .admin-link{display:block;margin-top:25px;padding:15px;background:linear-gradient(135deg,#e94560,#ff6b6b);border-radius:12px;text-align:center;color:#fff;text-decoration:none;font-weight:600}
+        .admin-link:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(233,69,96,0.3)}
         
-        .logout{display:block;text-align:center;color:rgba(255,255,255,0.5);text-decoration:none;margin-top:30px;font-size:0.9rem}
-        .logout:hover{color:#e94560}
-        
-        .section-title{font-size:0.8rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;margin:20px 0 10px}
+        .footer{text-align:center;padding:20px;color:rgba(255,255,255,0.3);font-size:0.75rem}
     </style>
 </head>
 <body>
 <div class="header">
-    <div class="logo">
-        <div class="logo-icon">🍽️</div>
-        <span class="logo-text">Food Pool</span>
-    </div>
-    <div class="user-info">
-        <div class="user-name" th:text="${employeeName}">Employee Name</div>
-        <div class="user-id" th:text="${employeeId}">EMP001</div>
-    </div>
+    <div class="logo">Encipher<span>Food</span></div>
 </div>
 
 <div class="container">
-    <h2 class="greeting">Hello, <span th:text="${employeeName}">User</span>!</h2>
-    
-    <!-- VOTING Section -->
-    <div class="section-title">Food Pool Survey</div>
-    
-    <!-- Food Date Banner when pool is open -->
-    <div th:if="${poolOpen}" class="food-date-banner">
-        <div class="label">Food will be served on</div>
-        <div class="date" th:text="${foodDateFormatted}">Tomorrow</div>
+    <div class="welcome">
+        <h2>Hello, <span th:text="${employeeName}">User</span>!</h2>
+        <p th:text="${email}">email@example.com</p>
     </div>
     
-    <!-- Pool Status Banner -->
-    <div th:if="${!foodAvailable}" class="pool-status unavailable">
-        <span class="pool-status-icon">🚫</span>
-        <span class="pool-status-text">No survey today</span>
-    </div>
-    <div th:if="${foodAvailable && poolOpen && !hasPooled}" class="pool-status open">
-        <span class="pool-status-icon">📝</span>
-        <span class="pool-status-text">Pool is open! Register now for <span th:text="${foodDateFormatted}">food date</span></span>
-    </div>
-    <div th:if="${foodAvailable && poolOpen && hasPooled}" class="pool-status open">
-        <span class="pool-status-icon">✅</span>
-        <span class="pool-status-text">Registered for <span th:text="${pooledType}" style="text-transform:uppercase"></span> on <span th:text="${foodDateFormatted}">food date</span></span>
-    </div>
-    <div th:if="${foodAvailable && !poolOpen}" class="pool-status closed">
-        <span class="pool-status-icon">⏳</span>
-        <span class="pool-status-text">Survey not started yet</span>
-    </div>
-    
-    <!-- Register Menu -->
-    <div class="menu-grid">
-        <a href="/pool" class="menu-item" 
-           th:classappend="${(!foodAvailable || !poolOpen || hasPooled) ? 'disabled' : 'highlight'}">
-            <div class="menu-icon">📝</div>
-            <div class="menu-label">Register for<br>Food Pool</div>
-        </a>
-        <div class="menu-item disabled" style="cursor:default">
-            <div class="menu-icon" th:if="${hasPooled}">✅</div>
-            <div class="menu-icon" th:unless="${hasPooled}">⏳</div>
-            <div class="menu-label" th:if="${hasPooled}">Registered:<br><span th:text="${pooledType}" style="text-transform:uppercase"></span></div>
-            <div class="menu-label" th:unless="${hasPooled}">Not<br>Registered</div>
+    <!-- Show Food Date Banner -->
+    <div class="food-date-banner" th:if="${poolOpen || isFoodCollectionDay}">
+        <!-- Pooling Day -->
+        <div th:if="${poolOpen}">
+            <div class="label">Food Survey Open - Vote for</div>
+            <div class="date" th:text="${foodDateFormatted}">Tomorrow</div>
+            <div class="status pooling">Survey Active</div>
+        </div>
+        <!-- Collection Day -->
+        <div th:if="${!poolOpen && isFoodCollectionDay}">
+            <div class="label">Food Collection Day</div>
+            <div class="date">Today</div>
+            <div class="status collection">Collect Your Food</div>
         </div>
     </div>
     
-    <!-- COLLECTION Section -->
-    <div class="section-title">Food Collection</div>
-    
-    <!-- Collection Status -->
-    <div th:if="${canCollectToday && !hasCollected}" class="pool-status collection">
-        <span class="pool-status-icon">🍽️</span>
-        <span class="pool-status-text">Your food is ready! Scan QR to collect <span th:text="${collectPooledType}" style="text-transform:uppercase"></span></span>
-    </div>
-    <div th:if="${canCollectToday && hasCollected}" class="pool-status open">
-        <span class="pool-status-icon">✅</span>
-        <span class="pool-status-text">Food collected! Enjoy your meal</span>
-    </div>
-    <div th:if="${!canCollectToday}" class="pool-status closed">
-        <span class="pool-status-icon">📅</span>
-        <span class="pool-status-text">No food to collect today</span>
+    <!-- Status Card for Voted Users -->
+    <div th:if="${hasPooled}" class="status-card">
+        <h4>Your Registration for <span th:text="${foodDateFormatted}">Food Date</span></h4>
+        <div class="value">
+            <span th:if="${pooledType == 'veg'}">Vegetarian</span>
+            <span th:if="${pooledType == 'nonveg'}">Non-Veg</span>
+            <span th:if="${poolOpen}" style="font-size:0.8rem;color:#00ff88"> (Can change while pool is open)</span>
+        </div>
     </div>
     
-    <!-- Scan Menu -->
     <div class="menu-grid">
-        <a href="/scan" class="menu-item" 
-           th:classappend="${(!canCollectToday || hasCollected) ? 'disabled' : 'highlight'}"
-           style="grid-column: span 2">
-            <div class="menu-icon">📱</div>
-            <div class="menu-label">Scan QR to Collect Food</div>
+        <!-- Register for Food Pool -->
+        <a th:href="@{/pool}" class="menu-card"
+           th:classappend="${!foodAvailable} ? 'disabled' : (${hasPooled && !poolOpen} ? 'done' : (${poolOpen} ? 'active' : ''))">
+            <span class="menu-icon">🍽️</span>
+            <div class="menu-info">
+                <h3>Register for Food Pool</h3>
+                <p th:if="${poolOpen}">Vote for <span th:text="${foodDateFormatted}">tomorrow's</span> food</p>
+                <p th:if="${!poolOpen && foodAvailable}">Survey not yet started</p>
+                <p th:if="${!foodAvailable}">No food survey available today</p>
+            </div>
+            <span th:if="${poolOpen}" class="menu-badge open">OPEN</span>
+            <span th:if="${!poolOpen && foodAvailable}" class="menu-badge closed">CLOSED</span>
+            <span th:if="${hasPooled && poolOpen}" class="menu-badge voted">VOTED</span>
+        </a>
+        
+        <!-- Scan QR to Collect -->
+        <a th:href="@{/scan}" class="menu-card"
+           th:classappend="${hasCollected} ? 'done' : (${canCollectToday} ? 'active' : '')">
+            <span class="menu-icon">📱</span>
+            <div class="menu-info">
+                <h3>Scan QR to Collect Food</h3>
+                <p th:if="${isFoodCollectionDay && !hasCollected}">Scan the QR code to collect your meal</p>
+                <p th:if="${isFoodCollectionDay && hasCollected}">Food collected for today</p>
+                <p th:if="${!isFoodCollectionDay}">Not a food collection day</p>
+            </div>
+            <span th:if="${hasCollected}" class="menu-badge collected">DONE</span>
+            <span th:if="${isFoodCollectionDay && !hasCollected && hasPoolForToday}" class="menu-badge open">READY</span>
+            <span th:if="${isFoodCollectionDay && !hasCollected && !hasPoolForToday}" class="menu-badge closed">NO VOTE</span>
+            <span th:if="${!isFoodCollectionDay}" class="menu-badge not-day">NOT TODAY</span>
+        </a>
+        
+        <!-- Admin Link -->
+        <a th:if="${isAdmin}" href="/admin" class="admin-link">
+            Admin Dashboard
         </a>
     </div>
-    
-    <!-- Admin Link -->
-    <div th:if="${isAdmin}" class="menu-grid">
-        <a href="/admin" class="menu-item admin">
-            <div class="menu-icon">⚙️</div>
-            <div class="menu-label">Admin Dashboard</div>
-        </a>
-    </div>
-    
-    <a href="/logout" class="logout">Sign Out</a>
+</div>
+
+<div class="footer">
+    Encipher Food Pool Management &copy; 2024
 </div>
 </body>
 </html>

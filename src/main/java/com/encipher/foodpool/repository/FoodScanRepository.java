@@ -21,4 +21,8 @@ public interface FoodScanRepository extends MongoRepository<FoodScan, String> {
     List<FoodScan> findByFoodDate(LocalDate foodDate);
     long countByFoodDate(LocalDate foodDate);
     List<FoodScan> findByFoodDateOrderByScanTimeDesc(LocalDate foodDate);
+    
+    // Track vote status
+    long countByFoodDateAndDidVote(LocalDate foodDate, boolean didVote);
+    List<FoodScan> findByFoodDateAndDidVote(LocalDate foodDate, boolean didVote);
 }

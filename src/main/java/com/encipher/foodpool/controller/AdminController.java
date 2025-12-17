@@ -18,6 +18,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Controller
 @RequestMapping("/admin")
@@ -33,7 +34,6 @@ public class AdminController {
         model.addAttribute("employeeName", user.getAttribute("employeeName"));
         model.addAttribute("email", user.getAttribute("Email"));
         
-        // Role information
         Boolean isAdministrator = user.getAttribute("isAdministrator");
         Boolean isContributor = user.getAttribute("isContributor");
         String role = user.getAttribute("role");
@@ -44,18 +44,38 @@ public class AdminController {
     }
     
     @GetMapping("")
-    public String dashboard(@AuthenticationPrincipal OAuth2User user, Model model) {
+    public String dashboard(
+            @AuthenticationPrincipal OAuth2User user, 
+            @RequestParam(required = false) String viewDate,
+            Model model) {
         addCommonAttributes(user, model);
         
-        // Today's menu and pool status
+        LocalDate today = LocalDate.now();
+        LocalDate selectedDate = today;
+        
+        // Parse view date if provided
+        if (viewDate != null && !viewDate.isEmpty()) {
+            try {
+                selectedDate = LocalDate.parse(viewDate);
+            } catch (Exception e) {
+                selectedDate = today;
+            }
+        }
+        
+        // Today's menu and pool status (for survey control)
         MenuConfig menu = foodPoolService.getTodayMenu();
         model.addAttribute("menu", menu);
         model.addAttribute("poolOpen", menu.isPoolOpen());
         model.addAttribute("foodAvailable", menu.isFoodAvailable());
         
-        // Food date (when food will be served)
-        LocalDate foodDate = menu.getFoodDate() != null ? menu.getFoodDate() : LocalDate.now().plusDays(1);
-        model.addAttribute("foodDate", foodDate.format(DateTimeFormatter.ofPattern("EEEE, MMM dd")));
+        // Food date from today's survey (if any)
+        LocalDate surveyFoodDate = menu.getFoodDate() != null ? menu.getFoodDate() : today.plusDays(1);
+        model.addAttribute("surveyFoodDate", surveyFoodDate.format(DateTimeFormatter.ofPattern("EEEE, MMM dd")));
+        model.addAttribute("surveyFoodDateValue", surveyFoodDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+        
+        // Check if today is a food collection day
+        boolean isFoodCollectionDay = foodPoolService.isFoodCollectionDay();
+        model.addAttribute("isFoodCollectionDay", isFoodCollectionDay);
         
         // Pool time info
         if (menu.isPoolOpen() && menu.getPoolAutoCloseAt() != null) {
@@ -64,35 +84,82 @@ public class AdminController {
             model.addAttribute("autoCloseTime", menu.getPoolAutoCloseAt().format(DateTimeFormatter.ofPattern("hh:mm a")));
         }
         
-        // Today's stats
-        Map<String, Long> stats = foodPoolService.getTodayStats();
+        // Determine which food date to show stats for
+        // If viewing a specific date, use that
+        // Otherwise, if today is food collection day, show today's stats
+        // Otherwise, show stats for survey food date
+        LocalDate statsDate;
+        if (viewDate != null && !viewDate.isEmpty()) {
+            statsDate = selectedDate;
+        } else if (isFoodCollectionDay) {
+            statsDate = today;
+        } else {
+            statsDate = surveyFoodDate;
+        }
+        
+        model.addAttribute("statsDate", statsDate);
+        model.addAttribute("statsDateDisplay", statsDate.format(DateTimeFormatter.ofPattern("EEEE, MMM dd")));
+        model.addAttribute("viewDate", statsDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+        
+        // Get stats for the selected food date
+        Map<String, Long> stats = foodPoolService.getStatsForFoodDate(statsDate);
         model.addAttribute("vegCount", stats.get("veg"));
         model.addAttribute("nonvegCount", stats.get("nonveg"));
         model.addAttribute("totalCount", stats.get("total"));
         model.addAttribute("collectedCount", stats.get("collected"));
+        model.addAttribute("collectedWithVote", stats.getOrDefault("collectedWithVote", 0L));
+        model.addAttribute("collectedWithoutVote", stats.getOrDefault("collectedWithoutVote", 0L));
         
-        // Calculate percentages for charts
         long total = stats.get("total");
         long collected = stats.get("collected");
         long notCollected = total - collected;
         model.addAttribute("consumptionPercent", total > 0 ? (collected * 100 / total) : 0);
-        model.addAttribute("notCollectedCount", notCollected);
+        model.addAttribute("notCollectedCount", Math.max(0, notCollected));
         
-        // Total employees and participation stats
         long totalEmployees = employeeService.getAllActiveEmployees().size();
         long notVoted = totalEmployees - total;
         model.addAttribute("totalEmployees", totalEmployees);
-        model.addAttribute("notVotedCount", notVoted);
+        model.addAttribute("notVotedCount", Math.max(0, notVoted));
         model.addAttribute("participationPercent", totalEmployees > 0 ? (total * 100 / totalEmployees) : 0);
         
-        // Today's pools
-        model.addAttribute("pools", foodPoolService.getTodayPools());
-        model.addAttribute("scans", foodPoolService.getTodayScans());
+        // Get pools and scans for the stats date
+        model.addAttribute("pools", foodPoolService.getPoolsForFoodDate(statsDate));
+        model.addAttribute("scans", foodPoolService.getScansForFoodDate(statsDate));
         
-        model.addAttribute("today", LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
-        model.addAttribute("todayDisplay", LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, MMM dd")));
+        model.addAttribute("today", today.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+        model.addAttribute("todayDisplay", today.format(DateTimeFormatter.ofPattern("EEEE, MMM dd")));
+        
+        // Date navigation
+        model.addAttribute("prevWeek", statsDate.minusWeeks(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+        model.addAttribute("nextWeek", statsDate.plusWeeks(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+        model.addAttribute("yesterday", statsDate.minusDays(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+        model.addAttribute("tomorrow", statsDate.plusDays(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
         
         return "admin/dashboard";
+    }
+    
+    // API to get stats for a specific date (for AJAX)
+    @GetMapping("/stats/{date}")
+    @ResponseBody
+    public ResponseEntity<?> getStatsForDate(@PathVariable String date) {
+        try {
+            LocalDate localDate = LocalDate.parse(date);
+            Map<String, Long> stats = foodPoolService.getStatsForFoodDate(localDate);
+            List<FoodPool> pools = foodPoolService.getPoolsForFoodDate(localDate);
+            List<FoodScan> scans = foodPoolService.getScansForFoodDate(localDate);
+            
+            long totalEmployees = employeeService.getAllActiveEmployees().size();
+            
+            return ResponseEntity.ok(Map.of(
+                "stats", stats,
+                "pools", pools,
+                "scans", scans,
+                "totalEmployees", totalEmployees,
+                "date", localDate.format(DateTimeFormatter.ofPattern("EEEE, MMM dd, yyyy"))
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
     
     @PostMapping("/pool/open")
@@ -103,7 +170,6 @@ public class AdminController {
         try {
             String email = user.getAttribute("Email");
             
-            // Get duration from request, default to 6 hours
             int duration = 6;
             if (body != null && body.containsKey("duration")) {
                 Object durationObj = body.get("duration");
@@ -114,7 +180,6 @@ public class AdminController {
                 }
             }
             
-            // Get food date (default to tomorrow)
             LocalDate foodDate = LocalDate.now().plusDays(1);
             if (body != null && body.containsKey("foodDate")) {
                 String foodDateStr = (String) body.get("foodDate");
@@ -123,7 +188,6 @@ public class AdminController {
                 }
             }
             
-            // Validate duration (1-24 hours)
             if (duration < 1) duration = 1;
             if (duration > 24) duration = 24;
             
@@ -170,7 +234,8 @@ public class AdminController {
     @ResponseBody
     public ResponseEntity<?> sendEatReminder(@AuthenticationPrincipal OAuth2User user) {
         try {
-            Map<String, Long> stats = foodPoolService.getTodayStats();
+            LocalDate today = LocalDate.now();
+            Map<String, Long> stats = foodPoolService.getStatsForFoodDate(today);
             cliqNotificationService.sendEatReminder(stats.get("total") - stats.get("collected"));
             return ResponseEntity.ok(Map.of("success", true, "message", "Reminder sent to collect food!"));
         } catch (Exception e) {
@@ -295,7 +360,6 @@ public class AdminController {
         
         String role = body.getOrDefault("role", "USER");
         
-        // Validate role
         if (!role.equals("ADMINISTRATOR") && !role.equals("CONTRIBUTOR") && !role.equals("USER")) {
             return ResponseEntity.badRequest().body(Map.of("error", "Invalid role"));
         }
@@ -338,7 +402,7 @@ public class AdminController {
     public ResponseEntity<?> getPoolsByDate(@PathVariable String date) {
         try {
             LocalDate localDate = LocalDate.parse(date);
-            List<FoodPool> pools = foodPoolService.getPoolsForDate(localDate);
+            List<FoodPool> pools = foodPoolService.getPoolsForFoodDate(localDate);
             return ResponseEntity.ok(pools);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));

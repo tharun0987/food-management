@@ -43,7 +43,6 @@ public class EmployeeService {
         List<Employee> allEmployees = employeeRepository.findByIsActiveTrue();
         
         for (Employee emp : allEmployees) {
-            // Exact match (case insensitive)
             if (emp.getName().equalsIgnoreCase(zohoName)) {
                 return emp;
             }
@@ -54,7 +53,7 @@ public class EmployeeService {
         for (Employee emp : allEmployees) {
             String empNameLower = emp.getName().toLowerCase();
             boolean match = Arrays.stream(nameParts)
-                    .filter(p -> p.length() > 2)  // Skip short words
+                    .filter(p -> p.length() > 2)
                     .anyMatch(empNameLower::contains);
             if (match) {
                 return emp;
@@ -68,42 +67,70 @@ public class EmployeeService {
         return employeeRepository.findByIsActiveTrue();
     }
     
+    /**
+     * Get users with admin access (ADMINISTRATOR or legacy admin)
+     */
     public List<Employee> getAdmins() {
-        // Get both legacy admins and role-based admins
         List<Employee> admins = new ArrayList<>();
-        admins.addAll(employeeRepository.findByIsAdminTrue());
         admins.addAll(employeeRepository.findByRole("ADMINISTRATOR"));
         admins.addAll(employeeRepository.findByRole("CONTRIBUTOR"));
         
-        // Remove duplicates
-        return admins.stream()
-                .filter(e -> e != null)
-                .distinct()
-                .toList();
+        // Include legacy admins
+        for (Employee emp : employeeRepository.findByIsAdminTrue()) {
+            if (emp.getRole() == null || "USER".equals(emp.getRole())) {
+                // Legacy admin without proper role - treat as ADMINISTRATOR
+                emp.setRole("ADMINISTRATOR");
+                employeeRepository.save(emp);
+            }
+            if (!admins.contains(emp)) {
+                admins.add(emp);
+            }
+        }
+        
+        return admins.stream().distinct().toList();
     }
     
+    /**
+     * Get only ADMINISTRATOR role users
+     */
     public List<Employee> getAdministrators() {
         List<Employee> result = new ArrayList<>();
         result.addAll(employeeRepository.findByRole("ADMINISTRATOR"));
-        // Include legacy admins
-        result.addAll(employeeRepository.findByIsAdminTrue());
         return result.stream().distinct().toList();
     }
     
+    /**
+     * Get only CONTRIBUTOR role users
+     */
     public List<Employee> getContributors() {
         return employeeRepository.findByRole("CONTRIBUTOR");
     }
     
+    /**
+     * Check if user has any admin access (ADMINISTRATOR or CONTRIBUTOR)
+     */
     public boolean isAdmin(String email) {
         if (email == null) return false;
         Optional<Employee> emp = findByEmail(email);
         return emp.map(Employee::hasAdminAccess).orElse(false);
     }
     
+    /**
+     * Check if user is specifically ADMINISTRATOR
+     */
     public boolean isAdministrator(String email) {
         if (email == null) return false;
         Optional<Employee> emp = findByEmail(email);
-        return emp.map(Employee::isAdministrator).orElse(false);
+        return emp.map(e -> "ADMINISTRATOR".equals(e.getRole())).orElse(false);
+    }
+    
+    /**
+     * Check if user is specifically CONTRIBUTOR
+     */
+    public boolean isContributor(String email) {
+        if (email == null) return false;
+        Optional<Employee> emp = findByEmail(email);
+        return emp.map(e -> "CONTRIBUTOR".equals(e.getRole())).orElse(false);
     }
     
     public boolean isAdminByName(String name) {
@@ -117,11 +144,22 @@ public class EmployeeService {
         return employeeRepository.save(employee);
     }
     
+    /**
+     * Set role for employee - properly manage role distinction
+     */
     public void setRole(String employeeId, String role) {
         employeeRepository.findByEmployeeId(employeeId).ifPresent(emp -> {
             emp.setRole(role);
-            // Sync legacy field
-            emp.setAdmin("ADMINISTRATOR".equals(role) || "CONTRIBUTOR".equals(role));
+            
+            // Set legacy isAdmin field based on role
+            // Only ADMINISTRATOR gets full admin access
+            // CONTRIBUTOR has limited access
+            if ("ADMINISTRATOR".equals(role)) {
+                emp.setAdmin(true);
+            } else {
+                emp.setAdmin(false);  // CONTRIBUTOR and USER don't get isAdmin=true
+            }
+            
             employeeRepository.save(emp);
             log.info("Set role={} for employee: {} - {}", role, employeeId, emp.getName());
         });
@@ -132,7 +170,7 @@ public class EmployeeService {
             emp.setAdmin(isAdmin);
             if (isAdmin && (emp.getRole() == null || "USER".equals(emp.getRole()))) {
                 emp.setRole("ADMINISTRATOR");
-            } else if (!isAdmin) {
+            } else if (!isAdmin && "ADMINISTRATOR".equals(emp.getRole())) {
                 emp.setRole("USER");
             }
             employeeRepository.save(emp);
@@ -156,7 +194,6 @@ public class EmployeeService {
     }
     
     public Employee addEmployee(String employeeId, String name, String email, boolean isAdmin) {
-        // Check if exists
         if (employeeRepository.findByEmployeeId(employeeId).isPresent()) {
             throw new RuntimeException("Employee ID already exists: " + employeeId);
         }
@@ -170,22 +207,19 @@ public class EmployeeService {
     }
     
     public Employee addEmployeeWithRole(String employeeId, String name, String email, String role) {
-        // Check if exists
         if (employeeRepository.findByEmployeeId(employeeId).isPresent()) {
             throw new RuntimeException("Employee ID already exists: " + employeeId);
         }
         
         Employee employee = new Employee(employeeId, name, email, LocalDate.now());
         employee.setRole(role);
-        employee.setAdmin("ADMINISTRATOR".equals(role) || "CONTRIBUTOR".equals(role));
+        // Only ADMINISTRATOR gets isAdmin=true
+        employee.setAdmin("ADMINISTRATOR".equals(role));
         employee.setActive(true);
         
         return employeeRepository.save(employee);
     }
     
-    /**
-     * Load employees from Excel file into MongoDB
-     */
     public int loadFromExcel(InputStream inputStream) {
         int count = 0;
         try (Workbook workbook = new XSSFWorkbook(inputStream)) {
@@ -219,6 +253,7 @@ public class EmployeeService {
                 
                 Employee employee = new Employee(employeeId, name, null, doj);
                 employee.setRole("USER");
+                employee.setAdmin(false);
                 employeeRepository.save(employee);
                 count++;
                 log.info("Loaded employee: {} - {}", employeeId, name);

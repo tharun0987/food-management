@@ -33,6 +33,8 @@ public class FoodScan {
     
     private String qrData;
     
+    private boolean didVote;        // Track if employee voted before collecting
+    
     public FoodScan(String employeeId, String employeeName, String foodType, 
                     LocalDate date, String qrData) {
         this.employeeId = employeeId;
@@ -42,5 +44,6 @@ public class FoodScan {
         this.foodDate = date;
         this.scanTime = LocalDateTime.now();
         this.qrData = qrData;
+        this.didVote = true; // Default
     }
 }

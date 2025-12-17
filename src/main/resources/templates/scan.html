@@ -41,6 +41,9 @@
         .permission-guide{background:rgba(255,255,255,0.05);padding:20px;border-radius:12px;margin:15px 0}
         .permission-guide h4{margin-bottom:10px;color:#ffaa00}
         .permission-guide ul{margin-left:20px;font-size:0.85rem;line-height:1.8;color:rgba(255,255,255,0.7)}
+        .vote-status{font-size:0.85rem;margin-top:10px;padding:8px 15px;border-radius:8px;display:inline-block}
+        .vote-status.voted{background:rgba(0,255,136,0.2);color:#00ff88}
+        .vote-status.not-voted{background:rgba(255,170,0,0.2);color:#ffaa00}
     </style>
 </head>
 <body>
@@ -57,36 +60,32 @@
     </div>
     
     <!-- Not a Food Collection Day -->
-    <div th:if="${!isFoodCollectionDay && !hasPooled}" class="status warning">
+    <div th:if="${!isFoodCollectionDay}" class="status warning">
         <h3>No Food Collection Today</h3>
         <p>Today is not a scheduled food collection day.</p>
         <p style="margin-top:10px;font-size:0.85rem;color:rgba(255,255,255,0.5)">
-            Food can only be collected on the scheduled food date after registering in the pool.
+            Food can only be collected on the scheduled food date.
         </p>
         <a href="/pool" class="btn btn-primary" style="margin-top:15px">Check Food Pool</a>
     </div>
     
-    <!-- Not Pooled for Today -->
-    <div th:if="${!hasPooled && isFoodCollectionDay}" class="status warning">
-        <h3>Not Registered for Today</h3>
-        <p>You are not registered for food collection today.</p>
-        <p style="margin-top:10px;font-size:0.85rem;color:rgba(255,255,255,0.5)">
-            You can only collect food on the date you registered for.
-        </p>
-        <a href="/pool" class="btn btn-primary" style="margin-top:15px">Check Current Pool</a>
-    </div>
-    
     <!-- Already Collected -->
-    <div th:if="${hasPooled && hasCollected}" class="status success">
+    <div th:if="${isFoodCollectionDay && hasCollected}" class="status success">
         <h3>Food Collected</h3>
-        <p>You've already collected your <strong th:text="${pooledType}" style="text-transform:uppercase"></strong> meal today.</p>
+        <p>You've already collected your meal today.</p>
+        <div th:if="${hasPooled}" class="vote-status voted">Voted: <span th:text="${pooledType}" style="text-transform:uppercase"></span></div>
         <a href="/home" class="btn btn-secondary" style="margin-top:15px">Back to Home</a>
     </div>
     
-    <!-- Ready to Scan -->
-    <div th:if="${hasPooled && !hasCollected}" id="scanSection">
-        <div class="status info">
+    <!-- Ready to Scan (voted or not) -->
+    <div th:if="${isFoodCollectionDay && !hasCollected}" id="scanSection">
+        <div th:if="${hasPooled}" class="status info">
             <p>Ready to collect: <strong th:text="${pooledType}" style="text-transform:uppercase"></strong></p>
+            <div class="vote-status voted">You voted for this meal</div>
+        </div>
+        <div th:unless="${hasPooled}" class="status warning">
+            <p>You did not vote for today's food</p>
+            <div class="vote-status not-voted">Collection will be tracked as "Did not vote"</div>
         </div>
         
         <div class="camera-box" id="cameraBox">
@@ -142,19 +141,16 @@
         if (loading) loading.style.display = 'flex';
         if (cameraError) cameraError.classList.add('hidden');
         
-        // Check if getUserMedia is supported
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
             showCameraError('Camera not supported on this browser. Please use Chrome or Safari.');
             return;
         }
         
         try {
-            // Stop existing stream if any
             if (stream) {
                 stream.getTracks().forEach(t => t.stop());
             }
             
-            // Request camera access with fallback options
             const constraints = [
                 { video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false },
                 { video: { facingMode: 'environment' }, audio: false },
@@ -169,7 +165,6 @@
                     break;
                 } catch (e) {
                     lastError = e;
-                    console.log('Failed with constraint:', constraint, e);
                 }
             }
             
@@ -179,7 +174,6 @@
             
             video.srcObject = stream;
             
-            // Wait for video to be ready
             await new Promise((resolve, reject) => {
                 video.onloadedmetadata = () => {
                     video.play().then(resolve).catch(reject);
@@ -188,11 +182,9 @@
                 setTimeout(() => reject(new Error('Video load timeout')), 10000);
             });
             
-            // Setup canvas
             canvas.width = video.videoWidth || 640;
             canvas.height = video.videoHeight || 480;
             
-            // Show video and overlay
             if (loading) loading.style.display = 'none';
             video.style.display = 'block';
             if (overlay) overlay.style.display = 'flex';
@@ -201,8 +193,6 @@
             scan();
             
         } catch (e) {
-            console.error('Camera error:', e);
-            
             let message = 'Unable to access camera.';
             if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
                 message = 'Camera permission denied. Please allow camera access and try again.';
@@ -210,12 +200,9 @@
                 message = 'No camera found on this device.';
             } else if (e.name === 'NotReadableError' || e.name === 'TrackStartError') {
                 message = 'Camera is in use by another app. Please close other apps and try again.';
-            } else if (e.name === 'OverconstrainedError') {
-                message = 'Camera does not support required settings.';
             } else if (e.name === 'SecurityError') {
                 message = 'Camera access blocked. This page needs to be served over HTTPS.';
             }
-            
             showCameraError(message);
         }
     }
@@ -248,12 +235,10 @@
                 if (code && code.data) {
                     scanning = false;
                     
-                    // Stop camera
                     if (stream) {
                         stream.getTracks().forEach(t => t.stop());
                     }
                     
-                    // Visual feedback
                     if (cameraBox) cameraBox.style.borderColor = '#00ff88';
                     
                     verifyScan(code.data);
@@ -292,7 +277,6 @@
                 setTimeout(() => location.reload(), 2000);
             }
         } catch (e) {
-            console.error('API error:', e);
             if (cameraBox) {
                 cameraBox.innerHTML = '<div class="camera-error"><h3>Network Error</h3><p>Please check your connection and try again.</p></div>';
             }
@@ -300,7 +284,6 @@
         }
     }
     
-    // Auto-start camera when page loads
     if (document.getElementById('scanSection')) {
         window.addEventListener('load', () => {
             setTimeout(startCamera, 500);

@@ -22,6 +22,15 @@
         .nav-link:hover,.nav-link.active{background:rgba(233,69,96,0.2);color:#e94560}
         .nav-link.disabled{opacity:0.4;pointer-events:none}
         
+        .date-nav{display:flex;align-items:center;justify-content:center;gap:15px;margin:20px 0;padding:15px;background:rgba(255,255,255,0.05);border-radius:12px}
+        .date-nav a{color:#fff;text-decoration:none;padding:8px 15px;border-radius:8px;background:rgba(255,255,255,0.1);font-size:0.85rem}
+        .date-nav a:hover{background:rgba(0,217,255,0.2)}
+        .date-nav .current-date{font-size:1.1rem;font-weight:600;color:#00d9ff;min-width:200px;text-align:center}
+        .date-nav input[type="date"]{padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:#1a1a2e;color:#fff;font-family:inherit}
+        .quick-dates{display:flex;gap:8px;margin-top:10px;justify-content:center}
+        .quick-dates a{padding:5px 12px;border-radius:15px;font-size:0.75rem;background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.6);text-decoration:none}
+        .quick-dates a:hover,.quick-dates a.active{background:rgba(0,217,255,0.2);color:#00d9ff}
+        
         .pool-control{background:linear-gradient(135deg,rgba(233,69,96,0.2),rgba(255,107,107,0.1));border:2px solid #e94560;border-radius:16px;padding:25px;margin:20px 0;text-align:center}
         .pool-control h3{margin-bottom:15px;font-size:1.2rem}
         .pool-status{font-size:1.5rem;margin:15px 0}
@@ -47,7 +56,7 @@
         .notify-section{background:rgba(255,255,255,0.05);border-radius:12px;padding:20px;margin:20px 0}
         .notify-section h3{font-size:1rem;margin-bottom:15px;color:rgba(255,255,255,0.8)}
         .notify-buttons{display:flex;flex-wrap:wrap;gap:10px}
-        .notify-btn{padding:10px 18px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;background:transparent;color:#fff;font-size:0.85rem;cursor:pointer;transition:all 0.3s;display:flex;align-items:center;gap:8px}
+        .notify-btn{padding:10px 18px;border:1px solid rgba(255,255,255,0.2);border-radius:8px;background:transparent;color:#fff;font-size:0.85rem;cursor:pointer;transition:all 0.3s}
         .notify-btn:hover{background:rgba(255,255,255,0.1);border-color:#00d9ff}
         .notify-btn.primary{background:linear-gradient(135deg,#00d9ff,#00ff88);color:#000;border:none}
         
@@ -73,7 +82,7 @@
         .pool-type{padding:4px 12px;border-radius:20px;font-size:0.7rem;font-weight:600}
         .pool-type.veg{background:rgba(0,255,136,0.2);color:#00ff88}
         .pool-type.nonveg{background:rgba(255,107,107,0.2);color:#ff6b6b}
-        .btn-small{padding:8px 16px;border:none;border-radius:6px;font-size:0.8rem;cursor:pointer;background:#e94560;color:#fff}
+        .pool-type.unknown{background:rgba(255,170,0,0.2);color:#ffaa00}
         .empty-state{padding:30px;text-align:center;color:rgba(255,255,255,0.5)}
         
         .message{padding:12px;border-radius:8px;margin:10px 0;text-align:center}
@@ -81,9 +90,12 @@
         .message.error{background:rgba(255,82,82,0.15);color:#ff5252}
         .hidden{display:none}
         
+        .collection-day-badge{background:rgba(0,255,136,0.2);color:#00ff88;padding:5px 15px;border-radius:15px;font-size:0.8rem;display:inline-block;margin:10px 0}
+        
         @media(max-width:768px){
             .stats{grid-template-columns:repeat(2,1fr)}
             .charts-grid{grid-template-columns:1fr}
+            .date-nav{flex-direction:column;gap:10px}
         }
     </style>
 </head>
@@ -121,18 +133,15 @@
             <div th:if="${poolOpen}" class="pool-status open">POOL IS OPEN</div>
             <div th:unless="${poolOpen}" class="pool-status closed">POOL IS CLOSED</div>
             
-            <!-- Food date info -->
             <div th:if="${poolOpen}" class="food-date-info">
-                Food will be served on: <strong th:text="${foodDate}">Tomorrow</strong>
+                Food will be served on: <strong th:text="${surveyFoodDate}">Tomorrow</strong>
             </div>
             
-            <!-- Timer when pool is open -->
             <div th:if="${poolOpen && minutesLeft != null}" class="pool-timer">
                 <span>Auto-closes at <strong th:text="${autoCloseTime}"></strong></span><br>
                 <span class="time" th:text="${minutesLeft} + ' min left'"></span>
             </div>
             
-            <!-- Config when pool is closed -->
             <div th:unless="${poolOpen}" class="config-row">
                 <label>Duration:</label>
                 <select id="duration">
@@ -157,22 +166,31 @@
         </div>
     </div>
     
+    <!-- Date Navigation for Stats -->
+    <div class="date-nav">
+        <a th:href="@{/admin(viewDate=${yesterday})}">&larr; Prev Day</a>
+        <div class="current-date">
+            <span th:text="${statsDateDisplay}">Dec 18</span>
+            <div th:if="${isFoodCollectionDay && viewDate == today}" class="collection-day-badge">Collection Day</div>
+        </div>
+        <a th:href="@{/admin(viewDate=${tomorrow})}">Next Day &rarr;</a>
+        <input type="date" id="datePicker" th:value="${viewDate}" onchange="goToDate(this.value)">
+    </div>
+    <div class="quick-dates">
+        <a th:href="@{/admin(viewDate=${today})}" th:classappend="${viewDate == today} ? 'active'">Today</a>
+        <a th:href="@{/admin(viewDate=${surveyFoodDateValue})}" th:classappend="${viewDate == surveyFoodDateValue} ? 'active'">Survey Food Date</a>
+        <a th:href="@{/admin(viewDate=${prevWeek})}">-1 Week</a>
+        <a th:href="@{/admin(viewDate=${nextWeek})}">+1 Week</a>
+    </div>
+    
     <!-- Notification Section -->
     <div class="notify-section">
         <h3>Send Notifications</h3>
         <div class="notify-buttons">
-            <button class="notify-btn" onclick="sendNotify('participate')">
-                Remind to Vote
-            </button>
-            <button class="notify-btn" onclick="sendNotify('eat')">
-                Food Has Arrived
-            </button>
-            <button class="notify-btn" onclick="sendNotify('lastcall')">
-                Last Call to Vote
-            </button>
-            <button class="notify-btn primary" onclick="showCustomNotify()">
-                Custom Message
-            </button>
+            <button class="notify-btn" onclick="sendNotify('participate')">Remind to Vote</button>
+            <button class="notify-btn" onclick="sendNotify('eat')">Food Has Arrived</button>
+            <button class="notify-btn" onclick="sendNotify('lastcall')">Last Call to Vote</button>
+            <button class="notify-btn primary" onclick="showCustomNotify()">Custom Message</button>
         </div>
         <div id="customNotifyBox" class="hidden" style="margin-top:15px">
             <textarea id="customMessage" placeholder="Enter your message..." style="width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:#1a1a2e;color:#fff;min-height:80px;font-family:inherit"></textarea>
@@ -180,8 +198,10 @@
         </div>
     </div>
     
+    <!-- Stats Header -->
+    <h2>Statistics for <span th:text="${statsDateDisplay}">Date</span></h2>
+    
     <!-- Charts -->
-    <h2>Statistics Overview</h2>
     <div class="charts-grid">
         <div class="chart-card">
             <h4>Participation (Total Employees: <span th:text="${totalEmployees}">0</span>)</h4>
@@ -217,7 +237,6 @@
         </div>
     </div>
     
-    <!-- Additional Stats -->
     <div class="stats">
         <div class="stat">
             <div class="stat-value" style="color:#ff5252" th:text="${notVotedCount}">0</div>
@@ -225,7 +244,7 @@
         </div>
         <div class="stat">
             <div class="stat-value" style="color:#ffaa00" th:text="${notCollectedCount}">0</div>
-            <div class="stat-label">Not Collected</div>
+            <div class="stat-label">Voted But Not Collected</div>
         </div>
         <div class="stat">
             <div class="stat-value" style="color:#00ff88" th:text="${participationPercent} + '%'">0%</div>
@@ -237,10 +256,22 @@
         </div>
     </div>
     
+    <!-- Additional Collection Stats -->
+    <div class="stats" th:if="${collectedWithoutVote != null && collectedWithoutVote > 0}">
+        <div class="stat" style="grid-column: span 2">
+            <div class="stat-value" style="color:#00ff88" th:text="${collectedWithVote}">0</div>
+            <div class="stat-label">Collected (Voted)</div>
+        </div>
+        <div class="stat" style="grid-column: span 2">
+            <div class="stat-value" style="color:#ffaa00" th:text="${collectedWithoutVote}">0</div>
+            <div class="stat-label">Collected (Did NOT Vote)</div>
+        </div>
+    </div>
+    
     <!-- Registrations List -->
-    <h2>Today's Registrations</h2>
+    <h2>Registrations for <span th:text="${statsDateDisplay}">Date</span></h2>
     <div class="pool-list">
-        <div th:if="${#lists.isEmpty(pools)}" class="empty-state">No registrations yet</div>
+        <div th:if="${#lists.isEmpty(pools)}" class="empty-state">No registrations for this date</div>
         <div th:each="pool : ${pools}" class="pool-item">
             <div>
                 <div class="pool-name" th:text="${pool.employeeName}">Name</div>
@@ -251,10 +282,25 @@
             </div>
         </div>
     </div>
+    
+    <!-- Scans List -->
+    <h2>Collections for <span th:text="${statsDateDisplay}">Date</span></h2>
+    <div class="pool-list">
+        <div th:if="${#lists.isEmpty(scans)}" class="empty-state">No collections for this date</div>
+        <div th:each="scan : ${scans}" class="pool-item">
+            <div>
+                <div class="pool-name" th:text="${scan.employeeName}">Name</div>
+                <div class="pool-id" th:text="${scan.employeeId}">ID</div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center">
+                <span class="pool-type" th:classappend="${scan.foodType}" th:text="${scan.foodType}">veg</span>
+                <span th:if="${!scan.didVote}" class="pool-type unknown">No Vote</span>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script th:inline="javascript">
-// Chart Data
 const vegCount = [[${vegCount}]];
 const nonvegCount = [[${nonvegCount}]];
 const totalVoted = [[${totalCount}]];
@@ -269,7 +315,7 @@ new Chart(document.getElementById('participationChart'), {
     data: {
         labels: ['Veg', 'Non-Veg', 'Not Voted'],
         datasets: [{
-            data: [vegCount, nonvegCount, notVoted],
+            data: [vegCount, nonvegCount, Math.max(0, notVoted)],
             backgroundColor: ['#00ff88', '#ff6b6b', '#444'],
             borderWidth: 0
         }]
@@ -292,7 +338,7 @@ new Chart(document.getElementById('collectionChart'), {
     data: {
         labels: ['Collected', 'Not Collected'],
         datasets: [{
-            data: [collected, notCollected],
+            data: [collected, Math.max(0, notCollected)],
             backgroundColor: ['#00d9ff', '#ffaa00'],
             borderWidth: 0
         }]
@@ -309,12 +355,15 @@ new Chart(document.getElementById('collectionChart'), {
     }
 });
 
-// Functions
 function showMessage(text, isSuccess) {
     const msg = document.getElementById('message');
     msg.textContent = text;
     msg.className = 'message ' + (isSuccess ? 'success' : 'error');
     setTimeout(() => msg.classList.add('hidden'), 4000);
+}
+
+function goToDate(date) {
+    window.location.href = '/admin?viewDate=' + date;
 }
 
 async function openPool() {
@@ -375,7 +424,6 @@ async function sendCustomNotify() {
     }
 }
 
-// Auto-refresh page every 30 seconds when pool is open
 if (document.querySelector('.pool-status.open')) {
     setTimeout(() => location.reload(), 30000);
 }
