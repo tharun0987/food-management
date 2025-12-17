@@ -18,7 +18,6 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @Controller
 @RequestMapping("/admin")
@@ -51,31 +50,17 @@ public class AdminController {
         addCommonAttributes(user, model);
         
         LocalDate today = LocalDate.now();
-        LocalDate selectedDate = today;
         
-        // Parse view date if provided
-        if (viewDate != null && !viewDate.isEmpty()) {
-            try {
-                selectedDate = LocalDate.parse(viewDate);
-            } catch (Exception e) {
-                selectedDate = today;
-            }
-        }
-        
-        // Today's menu and pool status (for survey control)
+        // Today's menu and survey status
         MenuConfig menu = foodPoolService.getTodayMenu();
         model.addAttribute("menu", menu);
         model.addAttribute("poolOpen", menu.isPoolOpen());
         model.addAttribute("foodAvailable", menu.isFoodAvailable());
         
-        // Food date from today's survey (if any)
+        // Current survey food date (the date food will be served from today's survey)
         LocalDate surveyFoodDate = menu.getFoodDate() != null ? menu.getFoodDate() : today.plusDays(1);
-        model.addAttribute("surveyFoodDate", surveyFoodDate.format(DateTimeFormatter.ofPattern("EEEE, MMM dd")));
-        model.addAttribute("surveyFoodDateValue", surveyFoodDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
-        
-        // Check if today is a food collection day
-        boolean isFoodCollectionDay = foodPoolService.isFoodCollectionDay();
-        model.addAttribute("isFoodCollectionDay", isFoodCollectionDay);
+        model.addAttribute("surveyFoodDate", surveyFoodDate);
+        model.addAttribute("surveyFoodDateFormatted", surveyFoodDate.format(DateTimeFormatter.ofPattern("EEEE, MMM dd")));
         
         // Pool time info
         if (menu.isPoolOpen() && menu.getPoolAutoCloseAt() != null) {
@@ -84,61 +69,78 @@ public class AdminController {
             model.addAttribute("autoCloseTime", menu.getPoolAutoCloseAt().format(DateTimeFormatter.ofPattern("hh:mm a")));
         }
         
-        // Determine which food date to show stats for
-        // If viewing a specific date, use that
-        // Otherwise, if today is food collection day, show today's stats
-        // Otherwise, show stats for survey food date
-        LocalDate statsDate;
-        if (viewDate != null && !viewDate.isEmpty()) {
-            statsDate = selectedDate;
-        } else if (isFoodCollectionDay) {
-            statsDate = today;
-        } else {
-            statsDate = surveyFoodDate;
+        // Check if today is a food COLLECTION day
+        boolean isFoodCollectionDay = foodPoolService.isFoodCollectionDay();
+        model.addAttribute("isFoodCollectionDay", isFoodCollectionDay);
+        
+        // ========== COLLECTION STATS (for today if it's a food day) ==========
+        if (isFoodCollectionDay) {
+            Map<String, Long> collectionStats = foodPoolService.getTodayCollectionStats();
+            model.addAttribute("collectionVegCount", collectionStats.get("veg"));
+            model.addAttribute("collectionNonvegCount", collectionStats.get("nonveg"));
+            model.addAttribute("collectionTotalVoted", collectionStats.get("total"));
+            model.addAttribute("collectionCollected", collectionStats.get("collected"));
+            model.addAttribute("collectionWithVote", collectionStats.getOrDefault("collectedWithVote", 0L));
+            model.addAttribute("collectionWithoutVote", collectionStats.getOrDefault("collectedWithoutVote", 0L));
+            
+            long collTotal = collectionStats.get("total");
+            long collCollected = collectionStats.get("collected");
+            model.addAttribute("collectionPercent", collTotal > 0 ? (collCollected * 100 / collTotal) : 0);
+            
+            model.addAttribute("collectionPools", foodPoolService.getPoolsForFoodDate(today));
+            model.addAttribute("collectionScans", foodPoolService.getTodayScans());
         }
         
-        model.addAttribute("statsDate", statsDate);
-        model.addAttribute("statsDateDisplay", statsDate.format(DateTimeFormatter.ofPattern("EEEE, MMM dd")));
-        model.addAttribute("viewDate", statsDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+        // ========== SURVEY STATS (for current survey's food date) ==========
+        Map<String, Long> surveyStats = foodPoolService.getStatsForFoodDate(surveyFoodDate);
+        model.addAttribute("surveyVegCount", surveyStats.get("veg"));
+        model.addAttribute("surveyNonvegCount", surveyStats.get("nonveg"));
+        model.addAttribute("surveyTotalVoted", surveyStats.get("total"));
+        model.addAttribute("surveyPools", foodPoolService.getPoolsForFoodDate(surveyFoodDate));
         
-        // Get stats for the selected food date
-        Map<String, Long> stats = foodPoolService.getStatsForFoodDate(statsDate);
-        model.addAttribute("vegCount", stats.get("veg"));
-        model.addAttribute("nonvegCount", stats.get("nonveg"));
-        model.addAttribute("totalCount", stats.get("total"));
-        model.addAttribute("collectedCount", stats.get("collected"));
-        model.addAttribute("collectedWithVote", stats.getOrDefault("collectedWithVote", 0L));
-        model.addAttribute("collectedWithoutVote", stats.getOrDefault("collectedWithoutVote", 0L));
-        
-        long total = stats.get("total");
-        long collected = stats.get("collected");
-        long notCollected = total - collected;
-        model.addAttribute("consumptionPercent", total > 0 ? (collected * 100 / total) : 0);
-        model.addAttribute("notCollectedCount", Math.max(0, notCollected));
-        
+        // Total employees for participation calculation
         long totalEmployees = employeeService.getAllActiveEmployees().size();
-        long notVoted = totalEmployees - total;
         model.addAttribute("totalEmployees", totalEmployees);
-        model.addAttribute("notVotedCount", Math.max(0, notVoted));
-        model.addAttribute("participationPercent", totalEmployees > 0 ? (total * 100 / totalEmployees) : 0);
         
-        // Get pools and scans for the stats date
-        model.addAttribute("pools", foodPoolService.getPoolsForFoodDate(statsDate));
-        model.addAttribute("scans", foodPoolService.getScansForFoodDate(statsDate));
+        long surveyTotal = surveyStats.get("total");
+        model.addAttribute("surveyNotVoted", Math.max(0, totalEmployees - surveyTotal));
+        model.addAttribute("surveyParticipationPercent", totalEmployees > 0 ? (surveyTotal * 100 / totalEmployees) : 0);
         
-        model.addAttribute("today", today.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
-        model.addAttribute("todayDisplay", today.format(DateTimeFormatter.ofPattern("EEEE, MMM dd")));
+        // ========== HISTORICAL VIEW (for date navigation) ==========
+        LocalDate viewingDate = today;
+        if (viewDate != null && !viewDate.isEmpty()) {
+            try {
+                viewingDate = LocalDate.parse(viewDate);
+            } catch (Exception e) {
+                viewingDate = today;
+            }
+        }
+        
+        model.addAttribute("viewDate", viewingDate);
+        model.addAttribute("viewDateFormatted", viewingDate.format(DateTimeFormatter.ofPattern("EEEE, MMM dd, yyyy")));
+        
+        // Historical stats for the selected date
+        Map<String, Long> historyStats = foodPoolService.getStatsForFoodDate(viewingDate);
+        model.addAttribute("historyVegCount", historyStats.get("veg"));
+        model.addAttribute("historyNonvegCount", historyStats.get("nonveg"));
+        model.addAttribute("historyTotalVoted", historyStats.get("total"));
+        model.addAttribute("historyCollected", historyStats.get("collected"));
+        model.addAttribute("historyWithVote", historyStats.getOrDefault("collectedWithVote", 0L));
+        model.addAttribute("historyWithoutVote", historyStats.getOrDefault("collectedWithoutVote", 0L));
+        model.addAttribute("historyPools", foodPoolService.getPoolsForFoodDate(viewingDate));
+        model.addAttribute("historyScans", foodPoolService.getScansForFoodDate(viewingDate));
         
         // Date navigation
-        model.addAttribute("prevWeek", statsDate.minusWeeks(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
-        model.addAttribute("nextWeek", statsDate.plusWeeks(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
-        model.addAttribute("yesterday", statsDate.minusDays(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
-        model.addAttribute("tomorrow", statsDate.plusDays(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+        model.addAttribute("today", today.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+        model.addAttribute("todayDisplay", today.format(DateTimeFormatter.ofPattern("EEEE, MMM dd")));
+        model.addAttribute("prevDay", viewingDate.minusDays(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+        model.addAttribute("nextDay", viewingDate.plusDays(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+        model.addAttribute("prevWeek", viewingDate.minusWeeks(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+        model.addAttribute("nextWeek", viewingDate.plusWeeks(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
         
         return "admin/dashboard";
     }
     
-    // API to get stats for a specific date (for AJAX)
     @GetMapping("/stats/{date}")
     @ResponseBody
     public ResponseEntity<?> getStatsForDate(@PathVariable String date) {
@@ -194,8 +196,8 @@ public class AdminController {
             foodPoolService.openPool(email, duration, foodDate);
             return ResponseEntity.ok(Map.of(
                     "success", true, 
-                    "message", "Pool opened for " + duration + " hours! Food will be served on " + 
-                              foodDate.format(DateTimeFormatter.ofPattern("MMM dd"))
+                    "message", "Survey started for " + duration + " hours. Food date: " + 
+                              foodDate.format(DateTimeFormatter.ofPattern("MMM dd, yyyy"))
             ));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -208,7 +210,7 @@ public class AdminController {
         try {
             String email = user.getAttribute("Email");
             foodPoolService.closePool(email);
-            return ResponseEntity.ok(Map.of("success", true, "message", "Pool closed."));
+            return ResponseEntity.ok(Map.of("success", true, "message", "Survey closed successfully."));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
@@ -223,7 +225,7 @@ public class AdminController {
             MenuConfig menu = foodPoolService.getTodayMenu();
             LocalDate foodDate = menu.getFoodDate() != null ? menu.getFoodDate() : LocalDate.now().plusDays(1);
             cliqNotificationService.sendParticipateReminder(foodDate);
-            return ResponseEntity.ok(Map.of("success", true, "message", "Reminder sent to participate in pool!"));
+            return ResponseEntity.ok(Map.of("success", true, "message", "Reminder sent to participate in survey"));
         } catch (Exception e) {
             log.error("Failed to send participate reminder: {}", e.getMessage());
             return ResponseEntity.badRequest().body(Map.of("error", "Failed to send notification: " + e.getMessage()));
@@ -234,10 +236,10 @@ public class AdminController {
     @ResponseBody
     public ResponseEntity<?> sendEatReminder(@AuthenticationPrincipal OAuth2User user) {
         try {
-            LocalDate today = LocalDate.now();
-            Map<String, Long> stats = foodPoolService.getStatsForFoodDate(today);
-            cliqNotificationService.sendEatReminder(stats.get("total") - stats.get("collected"));
-            return ResponseEntity.ok(Map.of("success", true, "message", "Reminder sent to collect food!"));
+            Map<String, Long> stats = foodPoolService.getTodayCollectionStats();
+            long remaining = stats.get("total") - stats.get("collected");
+            cliqNotificationService.sendEatReminder(remaining);
+            return ResponseEntity.ok(Map.of("success", true, "message", "Reminder sent to collect food"));
         } catch (Exception e) {
             log.error("Failed to send eat reminder: {}", e.getMessage());
             return ResponseEntity.badRequest().body(Map.of("error", "Failed to send notification: " + e.getMessage()));
@@ -249,7 +251,7 @@ public class AdminController {
     public ResponseEntity<?> sendLastCallReminder(@AuthenticationPrincipal OAuth2User user) {
         try {
             cliqNotificationService.sendLastCallReminder();
-            return ResponseEntity.ok(Map.of("success", true, "message", "Last call reminder sent!"));
+            return ResponseEntity.ok(Map.of("success", true, "message", "Last call reminder sent"));
         } catch (Exception e) {
             log.error("Failed to send last call reminder: {}", e.getMessage());
             return ResponseEntity.badRequest().body(Map.of("error", "Failed to send notification: " + e.getMessage()));
@@ -267,7 +269,7 @@ public class AdminController {
                 return ResponseEntity.badRequest().body(Map.of("error", "Message cannot be empty"));
             }
             cliqNotificationService.sendCustomNotification(message);
-            return ResponseEntity.ok(Map.of("success", true, "message", "Custom notification sent!"));
+            return ResponseEntity.ok(Map.of("success", true, "message", "Custom notification sent"));
         } catch (Exception e) {
             log.error("Failed to send custom notification: {}", e.getMessage());
             return ResponseEntity.badRequest().body(Map.of("error", "Failed to send notification: " + e.getMessage()));
@@ -305,7 +307,7 @@ public class AdminController {
             foodPoolService.updateMenu(LocalDate.now(), foodAvailable, vegAvailable, nonvegAvailable,
                     vegItems, nonvegItems, updatedBy);
             
-            return ResponseEntity.ok(Map.of("success", true, "message", "Menu updated successfully!"));
+            return ResponseEntity.ok(Map.of("success", true, "message", "Menu updated successfully"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }

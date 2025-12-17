@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -23,7 +24,7 @@ public class FoodPoolService {
     private final MenuConfigRepository menuConfigRepository;
     private final CliqNotificationService cliqNotificationService;
     
-    // ============== MENU ==============
+    // ============== MENU CONFIG ==============
     
     public MenuConfig getTodayMenu() {
         LocalDate today = LocalDate.now();
@@ -39,7 +40,11 @@ public class FoodPoolService {
                 .orElseGet(() -> new MenuConfig(date));
     }
     
-    public Optional<MenuConfig> getMenuForFoodDate(LocalDate foodDate) {
+    /**
+     * Find the survey config where food date is the given date
+     * This tells us which survey created food for this date
+     */
+    public Optional<MenuConfig> getSurveyForFoodDate(LocalDate foodDate) {
         return menuConfigRepository.findByFoodDate(foodDate);
     }
     
@@ -52,18 +57,27 @@ public class FoodPoolService {
         return getTodayMenu().isFoodAvailable();
     }
     
+    /**
+     * Check if today is a food collection day (there's a survey with foodDate = today)
+     */
     public boolean isFoodCollectionDay() {
         LocalDate today = LocalDate.now();
-        Optional<MenuConfig> config = menuConfigRepository.findByFoodDate(today);
-        return config.isPresent();
+        return getSurveyForFoodDate(today).isPresent();
     }
     
+    /**
+     * Get the food date from today's active survey (if any)
+     */
     public LocalDate getFoodDateFromTodaySurvey() {
         MenuConfig menu = getTodayMenu();
         return menu.getFoodDate() != null ? menu.getFoodDate() : LocalDate.now().plusDays(1);
     }
     
-    // Admin: Start the pool/survey with duration and food date
+    // ============== POOL OPERATIONS ==============
+    
+    /**
+     * Admin: Start the pool/survey with duration and food date
+     */
     public MenuConfig openPool(String adminEmail, int durationHours, LocalDate foodDate) {
         MenuConfig config = getTodayMenu();
         
@@ -108,6 +122,9 @@ public class FoodPoolService {
         return openPool(adminEmail, 6, LocalDate.now().plusDays(1));
     }
     
+    /**
+     * Admin: Close the pool
+     */
     public MenuConfig closePool(String adminEmail) {
         MenuConfig config = getTodayMenu();
         config.setPoolOpen(false);
@@ -126,6 +143,9 @@ public class FoodPoolService {
         return saved;
     }
     
+    /**
+     * Admin: Configure today's menu
+     */
     public MenuConfig updateMenu(LocalDate date, boolean foodAvailable, 
                                   boolean vegAvailable, boolean nonvegAvailable,
                                   List<String> vegItems, List<String> nonvegItems, 
@@ -190,7 +210,8 @@ public class FoodPoolService {
     @Scheduled(fixedRate = 30000)
     public void checkFoodConsumption() {
         LocalDate today = LocalDate.now();
-        menuConfigRepository.findByFoodDate(today).ifPresent(config -> {
+        // Check if today is a food collection day
+        getSurveyForFoodDate(today).ifPresent(config -> {
             Map<String, Long> stats = getStatsForFoodDate(today);
             long total = stats.get("total");
             long collected = stats.get("collected");
@@ -226,6 +247,9 @@ public class FoodPoolService {
     
     // ============== FOOD POOL (VOTING) ==============
     
+    /**
+     * Get pool registration for a specific food date
+     */
     public Optional<FoodPool> getPoolForFoodDate(String employeeId, LocalDate foodDate) {
         return foodPoolRepository.findByEmployeeIdAndFoodDate(employeeId, foodDate);
     }
@@ -234,23 +258,23 @@ public class FoodPoolService {
         return getPoolForFoodDate(employeeId, foodDate).isPresent();
     }
     
-    public Optional<FoodPool> getPoolForToday(String employeeId) {
+    /**
+     * Get pool for the current active survey's food date
+     */
+    public Optional<FoodPool> getPoolForCurrentSurvey(String employeeId) {
         LocalDate foodDate = getFoodDateFromTodaySurvey();
         return getPoolForFoodDate(employeeId, foodDate);
     }
     
-    public boolean hasPooledToday(String employeeId) {
-        return getPoolForToday(employeeId).isPresent();
+    public boolean hasPooledForCurrentSurvey(String employeeId) {
+        return getPoolForCurrentSurvey(employeeId).isPresent();
     }
     
     /**
-     * Check if user can change their food preference
-     * Can change WHILE pool is open, cannot change after pool closes
+     * Check if user can change their food preference (pool must be open)
      */
     public boolean canChangePoolChoice(String employeeId) {
-        MenuConfig menu = getTodayMenu();
-        // Can change preference only while pool is open
-        return menu.isPoolOpen();
+        return isPoolOpen();
     }
     
     /**
@@ -261,32 +285,32 @@ public class FoodPoolService {
         MenuConfig menu = getTodayMenu();
         
         if (!menu.isFoodAvailable()) {
-            throw new Exception("Food is not available today");
+            throw new Exception("Food survey is not available today");
         }
         
         if (!menu.isPoolOpen()) {
-            throw new Exception("Pool is closed. You cannot change your preference.");
+            throw new Exception("Pool is closed. You cannot register or change your preference.");
         }
         
         LocalDate foodDate = menu.getFoodDate() != null ? menu.getFoodDate() : LocalDate.now().plusDays(1);
         
         // Check menu availability
         if ("veg".equals(foodType) && !menu.isVegAvailable()) {
-            throw new Exception("Veg not available");
+            throw new Exception("Veg option not available for this survey");
         }
         if ("nonveg".equals(foodType) && !menu.isNonvegAvailable()) {
-            throw new Exception("Non-veg not available");
+            throw new Exception("Non-veg option not available for this survey");
         }
         
-        // Check if already pooled - UPDATE if exists
+        // Check if already pooled for this food date - UPDATE if exists
         Optional<FoodPool> existingPool = getPoolForFoodDate(employee.getEmployeeId(), foodDate);
         if (existingPool.isPresent()) {
-            // Update existing pool preference
             FoodPool pool = existingPool.get();
             String oldType = pool.getFoodType();
             pool.setFoodType(foodType);
             pool.setTimestamp(LocalDateTime.now());
-            log.info("Employee {} changed preference from {} to {}", employee.getName(), oldType, foodType);
+            log.info("Employee {} changed preference from {} to {} for food date {}", 
+                    employee.getName(), oldType, foodType, foodDate);
             return foodPoolRepository.save(pool);
         }
         
@@ -296,51 +320,72 @@ public class FoodPoolService {
                 employee.getName(),
                 employee.getEmail(),
                 foodType,
-                LocalDate.now()
+                LocalDate.now()  // Survey date
         );
-        pool.setFoodDate(foodDate);
+        pool.setFoodDate(foodDate);  // When food will be collected
         
+        log.info("Employee {} registered for {} on food date {}", employee.getName(), foodType, foodDate);
         return foodPoolRepository.save(pool);
     }
     
-    public List<FoodPool> getTodayPools() {
-        LocalDate foodDate = getFoodDateFromTodaySurvey();
-        return foodPoolRepository.findByFoodDateOrderByTimestampDesc(foodDate);
-    }
-    
-    public List<FoodPool> getPoolsForDate(LocalDate date) {
-        return foodPoolRepository.findByDateOrderByTimestampDesc(date);
-    }
-    
+    /**
+     * Get all pools for a specific food date
+     */
     public List<FoodPool> getPoolsForFoodDate(LocalDate foodDate) {
         return foodPoolRepository.findByFoodDateOrderByTimestampDesc(foodDate);
     }
     
-    public Map<String, Long> getTodayStats() {
+    /**
+     * Get all pools for the current survey's food date
+     */
+    public List<FoodPool> getCurrentSurveyPools() {
         LocalDate foodDate = getFoodDateFromTodaySurvey();
-        return getStatsForFoodDate(foodDate);
+        return getPoolsForFoodDate(foodDate);
     }
     
+    /**
+     * Get stats for a specific food date
+     */
     public Map<String, Long> getStatsForFoodDate(LocalDate foodDate) {
         if (foodDate == null) foodDate = LocalDate.now();
+        
         long vegCount = foodPoolRepository.countByFoodDateAndFoodType(foodDate, "veg");
         long nonvegCount = foodPoolRepository.countByFoodDateAndFoodType(foodDate, "nonveg");
         long collectedCount = foodScanRepository.countByFoodDate(foodDate);
         long collectedWithVote = foodScanRepository.countByFoodDateAndDidVote(foodDate, true);
         long collectedWithoutVote = foodScanRepository.countByFoodDateAndDidVote(foodDate, false);
         
-        return Map.of(
-                "veg", vegCount,
-                "nonveg", nonvegCount,
-                "total", vegCount + nonvegCount,
-                "collected", collectedCount,
-                "collectedWithVote", collectedWithVote,
-                "collectedWithoutVote", collectedWithoutVote
-        );
+        Map<String, Long> stats = new HashMap<>();
+        stats.put("veg", vegCount);
+        stats.put("nonveg", nonvegCount);
+        stats.put("total", vegCount + nonvegCount);
+        stats.put("collected", collectedCount);
+        stats.put("collectedWithVote", collectedWithVote);
+        stats.put("collectedWithoutVote", collectedWithoutVote);
+        
+        return stats;
+    }
+    
+    /**
+     * Get stats for today's collection (if today is a food day)
+     */
+    public Map<String, Long> getTodayCollectionStats() {
+        return getStatsForFoodDate(LocalDate.now());
+    }
+    
+    /**
+     * Get stats for the current survey's food date
+     */
+    public Map<String, Long> getCurrentSurveyStats() {
+        LocalDate foodDate = getFoodDateFromTodaySurvey();
+        return getStatsForFoodDate(foodDate);
     }
     
     // ============== FOOD SCAN (COLLECTION) ==============
     
+    /**
+     * Get scan for a specific food date
+     */
     public Optional<FoodScan> getScanForFoodDate(String employeeId, LocalDate foodDate) {
         return foodScanRepository.findByEmployeeIdAndFoodDate(employeeId, foodDate);
     }
@@ -349,16 +394,12 @@ public class FoodPoolService {
         return getScanForFoodDate(employeeId, foodDate).isPresent();
     }
     
-    public Optional<FoodScan> getScanForToday(String employeeId) {
-        return foodScanRepository.findByEmployeeIdAndDate(employeeId, LocalDate.now());
-    }
-    
     public boolean hasCollectedToday(String employeeId) {
-        return getScanForToday(employeeId).isPresent();
+        return hasCollectedForFoodDate(employeeId, LocalDate.now());
     }
     
     /**
-     * Record food collection - ANYONE can collect food (even without voting)
+     * Record food collection - ANYONE can collect food on collection day
      * Track if they voted or not in metrics
      */
     public FoodScan recordScan(Employee employee, String qrData) throws Exception {
@@ -366,15 +407,15 @@ public class FoodPoolService {
         
         // Check if today is a food collection day
         if (!isFoodCollectionDay()) {
-            throw new Exception("Today is not a food collection day.");
+            throw new Exception("Today is not a food collection day. No food is scheduled for today.");
         }
         
         // Check if already collected
-        if (hasCollectedForFoodDate(employee.getEmployeeId(), today)) {
-            throw new Exception("Food already collected today");
+        if (hasCollectedToday(employee.getEmployeeId())) {
+            throw new Exception("You have already collected food today");
         }
         
-        // Check if employee voted (for tracking)
+        // Check if employee voted for today's food
         Optional<FoodPool> poolOpt = getPoolForFoodDate(employee.getEmployeeId(), today);
         boolean didVote = poolOpt.isPresent();
         String foodType = poolOpt.map(FoodPool::getFoodType).orElse("unknown");
@@ -389,16 +430,23 @@ public class FoodPoolService {
         scan.setFoodDate(today);
         scan.setDidVote(didVote);
         
-        log.info("Employee {} collected food. Voted: {}, FoodType: {}", employee.getName(), didVote, foodType);
+        log.info("Employee {} collected food. Voted: {}, FoodType: {}", 
+                employee.getName(), didVote, foodType);
         
         return foodScanRepository.save(scan);
     }
     
-    public List<FoodScan> getTodayScans() {
-        return foodScanRepository.findByDateOrderByScanTimeDesc(LocalDate.now());
-    }
-    
+    /**
+     * Get all scans for a specific food date
+     */
     public List<FoodScan> getScansForFoodDate(LocalDate foodDate) {
         return foodScanRepository.findByFoodDateOrderByScanTimeDesc(foodDate);
+    }
+    
+    /**
+     * Get today's scans
+     */
+    public List<FoodScan> getTodayScans() {
+        return getScansForFoodDate(LocalDate.now());
     }
 }
