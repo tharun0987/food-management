@@ -70,7 +70,16 @@
         .btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(8,145,178,0.3)}
         .btn-danger{background:var(--danger);color:#fff}
         .btn-danger:hover{background:#dc2626}
+        .btn-success{background:var(--success);color:#fff}
         .btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+        
+        .date-filter{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:16px;background:var(--bg-elevated);border-radius:10px;margin-bottom:20px}
+        .date-filter label{font-size:0.85rem;color:var(--text-muted)}
+        .date-filter input{padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);font-family:inherit}
+        .date-filter .btn{padding:10px 20px}
+        .quick-btns{display:flex;gap:6px;flex-wrap:wrap}
+        .quick-btn{padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text-muted);font-size:0.75rem;cursor:pointer}
+        .quick-btn:hover,.quick-btn.active{border-color:var(--primary);color:var(--primary);background:rgba(8,145,178,0.1)}
         
         .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
         .stat-card{background:var(--bg-elevated);border-radius:10px;padding:20px;text-align:center}
@@ -95,15 +104,8 @@
         .list-badge{padding:4px 12px;border-radius:16px;font-size:0.7rem;font-weight:600}
         .list-badge.veg{background:rgba(16,185,129,0.15);color:var(--success)}
         .list-badge.nonveg{background:rgba(249,115,22,0.15);color:#f97316}
-        .list-badge.unknown{background:rgba(245,158,11,0.15);color:var(--warning)}
         .list-badge.no-vote{background:rgba(239,68,68,0.15);color:var(--danger)}
         .empty-state{padding:40px;text-align:center;color:var(--text-muted)}
-        
-        .date-nav{display:flex;align-items:center;justify-content:center;gap:12px;margin:16px 0;padding:16px;background:var(--bg-elevated);border-radius:10px}
-        .date-nav a{color:var(--text);text-decoration:none;padding:8px 14px;border-radius:6px;background:var(--bg-card);font-size:0.85rem;border:1px solid var(--border)}
-        .date-nav a:hover{border-color:var(--primary);color:var(--primary)}
-        .date-nav .current{font-weight:600;min-width:200px;text-align:center;color:var(--accent)}
-        .date-nav input[type="date"]{padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);font-family:inherit}
         
         .notify-section{background:var(--bg-elevated);border-radius:10px;padding:20px;margin:16px 0}
         .notify-section h4{font-size:0.85rem;color:var(--text-muted);margin-bottom:14px}
@@ -119,13 +121,19 @@
         
         .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px}
         
+        .export-row{display:flex;justify-content:flex-end;margin-top:16px}
+        
+        .data-table{width:100%;border-collapse:collapse}
+        .data-table th,.data-table td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--border);font-size:0.85rem}
+        .data-table th{background:var(--bg-card);color:var(--text-muted);font-weight:600;font-size:0.75rem;text-transform:uppercase}
+        .data-table .number{text-align:right}
+        
         @media(max-width:900px){
             .stats-grid{grid-template-columns:repeat(2,1fr)}
             .charts-grid,.two-col{grid-template-columns:1fr}
         }
         @media(max-width:600px){
-            .date-nav{flex-direction:column;gap:10px}
-            .config-row{flex-direction:column;gap:12px}
+            .date-filter{flex-direction:column;align-items:stretch}
         }
     </style>
 </head>
@@ -145,14 +153,13 @@
     <div class="nav-links">
         <a href="/admin" class="nav-link active">Dashboard</a>
         <a href="/admin/menu" class="nav-link">Menu Settings</a>
-        <a href="/admin/reports" class="nav-link">Reports</a>
         <a href="/admin/employees" class="nav-link" th:classappend="${!isAdministrator} ? 'disabled'" 
            th:title="${!isAdministrator} ? 'Administrators only'">Manage Users</a>
     </div>
     
     <div id="message" class="message hidden"></div>
     
-    <!-- ========== SURVEY CONTROL ========== -->
+    <!-- Survey Control -->
     <div class="section">
         <div class="section-header">
             <span class="section-title">Food Survey Control</span>
@@ -206,7 +213,7 @@
         </div>
     </div>
     
-    <!-- ========== TODAY'S COLLECTION (if food day) ========== -->
+    <!-- Today's Collection (if food day) -->
     <div th:if="${isFoodCollectionDay}" class="section">
         <div class="section-header">
             <span class="section-title">Today's Food Collection</span>
@@ -232,17 +239,6 @@
             </div>
         </div>
         
-        <div class="stats-grid" style="margin-top:12px">
-            <div class="stat-card" style="grid-column:span 2">
-                <div class="stat-value" style="color:var(--success)" th:text="${collectionWithVote}">0</div>
-                <div class="stat-label">Collected (Voted)</div>
-            </div>
-            <div class="stat-card" style="grid-column:span 2">
-                <div class="stat-value" style="color:var(--warning)" th:text="${collectionWithoutVote}">0</div>
-                <div class="stat-label">Collected (Did Not Vote)</div>
-            </div>
-        </div>
-        
         <div class="notify-section" style="margin-top:20px">
             <h4>Send Collection Reminders</h4>
             <div class="notify-buttons">
@@ -250,46 +246,16 @@
                 <button class="notify-btn primary" onclick="showCustomNotify()">Custom Message</button>
             </div>
         </div>
-        
-        <h2 style="margin-top:24px">Collection Log</h2>
-        <div class="list">
-            <div th:if="${#lists.isEmpty(collectionScans)}" class="empty-state">No food collected yet</div>
-            <div th:each="scan : ${collectionScans}" class="list-item">
-                <div>
-                    <div class="list-name" th:text="${scan.employeeName}">Name</div>
-                    <div class="list-id" th:text="${scan.employeeId}">ID</div>
-                </div>
-                <div style="display:flex;gap:8px;align-items:center">
-                    <span class="list-badge" th:classappend="${scan.foodType}" th:text="${scan.foodType}">veg</span>
-                    <span th:if="${!scan.didVote}" class="list-badge no-vote">No Vote</span>
-                </div>
-            </div>
-        </div>
     </div>
     
-    <!-- ========== CURRENT SURVEY STATS ========== -->
+    <!-- Current Survey Stats -->
     <div th:if="${poolOpen || surveyTotalVoted > 0}" class="section">
         <div class="section-header">
             <span class="section-title">Survey for <span th:text="${surveyFoodDateFormatted}">Food Date</span></span>
             <span th:if="${poolOpen}" class="section-badge active">ACTIVE</span>
         </div>
         
-        <div class="charts-grid">
-            <div class="chart-card">
-                <h4>Vote Distribution</h4>
-                <div class="chart-container">
-                    <canvas id="surveyVoteChart"></canvas>
-                </div>
-            </div>
-            <div class="chart-card">
-                <h4>Participation (Total: <span th:text="${totalEmployees}">0</span>)</h4>
-                <div class="chart-container">
-                    <canvas id="surveyParticipationChart"></canvas>
-                </div>
-            </div>
-        </div>
-        
-        <div class="stats-grid" style="margin-top:16px">
+        <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-value veg" th:text="${surveyVegCount}">0</div>
                 <div class="stat-label">Veg</div>
@@ -321,82 +287,106 @@
             <textarea id="customMessage" placeholder="Enter your message..." style="width:100%;padding:12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);min-height:80px;font-family:inherit;resize:vertical"></textarea>
             <button class="btn btn-primary" onclick="sendCustomNotify()" style="margin-top:12px">Send Message</button>
         </div>
-        
-        <h2 style="margin-top:24px">Registered Votes</h2>
-        <div class="list">
-            <div th:if="${#lists.isEmpty(surveyPools)}" class="empty-state">No votes registered yet</div>
-            <div th:each="pool : ${surveyPools}" class="list-item">
-                <div>
-                    <div class="list-name" th:text="${pool.employeeName}">Name</div>
-                    <div class="list-id" th:text="${pool.employeeId}">ID</div>
-                </div>
-                <span class="list-badge" th:classappend="${pool.foodType}" th:text="${pool.foodType}">veg</span>
-            </div>
-        </div>
     </div>
     
-    <!-- ========== HISTORICAL DATA ========== -->
+    <!-- Date Range Report -->
     <div class="section">
         <div class="section-header">
             <span class="section-title">Historical Data</span>
         </div>
         
-        <div class="date-nav">
-            <a th:href="@{/admin(viewDate=${prevWeek})}">-1 Week</a>
-            <a th:href="@{/admin(viewDate=${prevDay})}">Prev</a>
-            <span class="current" th:text="${viewDateFormatted}">Date</span>
-            <a th:href="@{/admin(viewDate=${nextDay})}">Next</a>
-            <a th:href="@{/admin(viewDate=${nextWeek})}">+1 Week</a>
-            <input type="date" id="datePicker" th:value="${viewDate}" onchange="goToDate(this.value)">
-        </div>
-        
-        <div class="stats-grid" style="margin-top:16px">
-            <div class="stat-card">
-                <div class="stat-value veg" th:text="${historyVegCount}">0</div>
-                <div class="stat-label">Veg Voted</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value nonveg" th:text="${historyNonvegCount}">0</div>
-                <div class="stat-label">Non-Veg Voted</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value total" th:text="${historyTotalVoted}">0</div>
-                <div class="stat-label">Total Voted</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value collected" th:text="${historyCollected}">0</div>
-                <div class="stat-label">Collected</div>
-            </div>
-        </div>
-        
-        <div class="two-col" style="margin-top:20px">
+        <div class="date-filter">
             <div>
-                <h2 style="margin-top:0">Votes</h2>
-                <div class="list">
-                    <div th:if="${#lists.isEmpty(historyPools)}" class="empty-state">No votes for this date</div>
-                    <div th:each="pool : ${historyPools}" class="list-item">
-                        <div>
-                            <div class="list-name" th:text="${pool.employeeName}">Name</div>
-                            <div class="list-id" th:text="${pool.employeeId}">ID</div>
-                        </div>
-                        <span class="list-badge" th:classappend="${pool.foodType}" th:text="${pool.foodType}">veg</span>
+                <label>From:</label>
+                <input type="date" id="startDate" th:value="${startDate}">
+            </div>
+            <div>
+                <label>To:</label>
+                <input type="date" id="endDate" th:value="${endDate}">
+            </div>
+            <button class="btn btn-primary" onclick="loadReport()">View Data</button>
+            <div class="quick-btns">
+                <button class="quick-btn" onclick="setRange(7)">7 Days</button>
+                <button class="quick-btn active" onclick="setRange(30)">30 Days</button>
+                <button class="quick-btn" onclick="setRange(90)">90 Days</button>
+            </div>
+        </div>
+        
+        <!-- Report Data -->
+        <div id="reportData">
+            <div th:if="${report != null}">
+                <h2 style="margin-top:0">Summary: <span th:text="${report.startDate}">Start</span> to <span th:text="${report.endDate}">End</span></h2>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" style="color:var(--primary)" th:text="${report.foodPoolDays}">0</div>
+                        <div class="stat-label">Food Pool Days</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value total" th:text="${report.totalVoted}">0</div>
+                        <div class="stat-label">Total Votes</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value collected" th:text="${report.totalCollected}">0</div>
+                        <div class="stat-label">Total Collected</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value danger" th:text="${report.totalNotCollected}">0</div>
+                        <div class="stat-label">Not Collected</div>
                     </div>
                 </div>
-            </div>
-            <div>
-                <h2 style="margin-top:0">Collections</h2>
-                <div class="list">
-                    <div th:if="${#lists.isEmpty(historyScans)}" class="empty-state">No collections for this date</div>
-                    <div th:each="scan : ${historyScans}" class="list-item">
-                        <div>
-                            <div class="list-name" th:text="${scan.employeeName}">Name</div>
-                            <div class="list-id" th:text="${scan.employeeId}">ID</div>
-                        </div>
-                        <div style="display:flex;gap:8px;align-items:center">
-                            <span class="list-badge" th:classappend="${scan.foodType}" th:text="${scan.foodType}">veg</span>
-                            <span th:if="${!scan.didVote}" class="list-badge no-vote">No Vote</span>
+                
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <h4>Vote Distribution</h4>
+                        <div class="chart-container">
+                            <canvas id="voteChart"></canvas>
                         </div>
                     </div>
+                    <div class="chart-card">
+                        <h4>Collection Status</h4>
+                        <div class="chart-container">
+                            <canvas id="collectionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <h2>Daily Breakdown</h2>
+                <div style="overflow-x:auto;border-radius:8px;border:1px solid var(--border)">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th class="number">Veg</th>
+                                <th class="number">Non-Veg</th>
+                                <th class="number">Total Voted</th>
+                                <th class="number">Collected</th>
+                                <th class="number">Not Collected</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="day : ${report.dailyData}">
+                                <td th:text="${day.dateDisplay}">Date</td>
+                                <td class="number" th:text="${day.veg}">0</td>
+                                <td class="number" th:text="${day.nonveg}">0</td>
+                                <td class="number" th:text="${day.totalVoted}">0</td>
+                                <td class="number" th:text="${day.collected}">0</td>
+                                <td class="number" th:text="${day.notCollected}">0</td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(report.dailyData)}">
+                                <td colspan="6" style="text-align:center;color:var(--text-muted)">No data for selected date range</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="export-row">
+                    <button class="btn btn-success" onclick="exportReport()" style="display:flex;align-items:center;gap:8px">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        Export to Excel
+                    </button>
                 </div>
             </div>
         </div>
@@ -404,18 +394,17 @@
 </div>
 
 <script th:inline="javascript">
-const surveyVeg = [[${surveyVegCount}]] || 0;
-const surveyNonveg = [[${surveyNonvegCount}]] || 0;
-const surveyTotal = [[${surveyTotalVoted}]] || 0;
-const surveyNotVoted = [[${surveyNotVoted}]] || 0;
+const reportData = [[${report}]] || {};
+const dailyData = reportData.dailyData || [];
 
-if (document.getElementById('surveyVoteChart')) {
-    new Chart(document.getElementById('surveyVoteChart'), {
+// Vote Distribution Chart
+if (document.getElementById('voteChart') && reportData.totalVeg !== undefined) {
+    new Chart(document.getElementById('voteChart'), {
         type: 'doughnut',
         data: {
             labels: ['Veg', 'Non-Veg'],
             datasets: [{
-                data: [surveyVeg, surveyNonveg],
+                data: [reportData.totalVeg || 0, reportData.totalNonveg || 0],
                 backgroundColor: ['#10b981', '#f97316'],
                 borderWidth: 0
             }]
@@ -428,14 +417,15 @@ if (document.getElementById('surveyVoteChart')) {
     });
 }
 
-if (document.getElementById('surveyParticipationChart')) {
-    new Chart(document.getElementById('surveyParticipationChart'), {
+// Collection Chart
+if (document.getElementById('collectionChart') && reportData.totalCollected !== undefined) {
+    new Chart(document.getElementById('collectionChart'), {
         type: 'doughnut',
         data: {
-            labels: ['Voted', 'Not Voted'],
+            labels: ['Collected', 'Not Collected'],
             datasets: [{
-                data: [surveyTotal, surveyNotVoted],
-                backgroundColor: ['#06b6d4', '#374151'],
+                data: [reportData.totalCollected || 0, reportData.totalNotCollected || 0],
+                backgroundColor: ['#06b6d4', '#ef4444'],
                 borderWidth: 0
             }]
         },
@@ -454,8 +444,44 @@ function showMessage(text, isSuccess) {
     setTimeout(() => msg.classList.add('hidden'), 4000);
 }
 
-function goToDate(date) {
-    window.location.href = '/admin?viewDate=' + date;
+function setRange(days) {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - days + 1);
+    
+    document.getElementById('startDate').value = formatDate(start);
+    document.getElementById('endDate').value = formatDate(end);
+    
+    document.querySelectorAll('.quick-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+}
+
+function formatDate(date) {
+    return date.toISOString().split('T')[0];
+}
+
+function loadReport() {
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    
+    if (!startDate || !endDate) {
+        showMessage('Please select both start and end dates', false);
+        return;
+    }
+    
+    window.location.href = '/admin?startDate=' + startDate + '&endDate=' + endDate;
+}
+
+function exportReport() {
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    
+    if (!startDate || !endDate) {
+        showMessage('Please select date range first', false);
+        return;
+    }
+    
+    window.location.href = '/admin/reports/export?startDate=' + startDate + '&endDate=' + endDate;
 }
 
 async function openPool() {
@@ -513,6 +539,14 @@ async function sendCustomNotify() {
         document.getElementById('customNotifyBox').classList.add('hidden');
     }
 }
+
+// Set default date range on load
+window.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (!urlParams.has('startDate')) {
+        setRange(30);
+    }
+});
 
 if (document.querySelector('.section-badge.active')) {
     setTimeout(() => location.reload(), 60000);

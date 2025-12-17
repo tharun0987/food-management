@@ -49,12 +49,14 @@ public class AdminController {
     @GetMapping("")
     public String dashboard(
             @AuthenticationPrincipal OAuth2User user, 
-            @RequestParam(required = false) String viewDate,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
             Model model) {
         addCommonAttributes(user, model);
         
         LocalDate today = LocalDate.now();
         
+        // Survey Control
         MenuConfig menu = foodPoolService.getTodayMenu();
         model.addAttribute("menu", menu);
         model.addAttribute("poolOpen", menu.isPoolOpen());
@@ -70,6 +72,7 @@ public class AdminController {
             model.addAttribute("autoCloseTime", menu.getPoolAutoCloseAt().format(DateTimeFormatter.ofPattern("hh:mm a")));
         }
         
+        // Today's Collection (if food day)
         boolean isFoodCollectionDay = foodPoolService.isFoodCollectionDay();
         model.addAttribute("isFoodCollectionDay", isFoodCollectionDay);
         
@@ -90,6 +93,7 @@ public class AdminController {
             model.addAttribute("collectionScans", foodPoolService.getTodayScans());
         }
         
+        // Current Survey Stats
         Map<String, Long> surveyStats = foodPoolService.getStatsForFoodDate(surveyFoodDate);
         model.addAttribute("surveyVegCount", surveyStats.get("veg"));
         model.addAttribute("surveyNonvegCount", surveyStats.get("nonveg"));
@@ -103,34 +107,26 @@ public class AdminController {
         model.addAttribute("surveyNotVoted", Math.max(0, totalEmployees - surveyTotal));
         model.addAttribute("surveyParticipationPercent", totalEmployees > 0 ? (surveyTotal * 100 / totalEmployees) : 0);
         
-        LocalDate viewingDate = today;
-        if (viewDate != null && !viewDate.isEmpty()) {
-            try {
-                viewingDate = LocalDate.parse(viewDate);
-            } catch (Exception e) {
-                viewingDate = today;
-            }
+        // Date Range Report
+        LocalDate start = today.minusDays(30);
+        LocalDate end = today;
+        
+        if (startDate != null && !startDate.isEmpty()) {
+            try { start = LocalDate.parse(startDate); } catch (Exception e) {}
+        }
+        if (endDate != null && !endDate.isEmpty()) {
+            try { end = LocalDate.parse(endDate); } catch (Exception e) {}
         }
         
-        model.addAttribute("viewDate", viewingDate);
-        model.addAttribute("viewDateFormatted", viewingDate.format(DateTimeFormatter.ofPattern("EEEE, MMM dd, yyyy")));
+        model.addAttribute("startDate", start.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+        model.addAttribute("endDate", end.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
         
-        Map<String, Long> historyStats = foodPoolService.getStatsForFoodDate(viewingDate);
-        model.addAttribute("historyVegCount", historyStats.get("veg"));
-        model.addAttribute("historyNonvegCount", historyStats.get("nonveg"));
-        model.addAttribute("historyTotalVoted", historyStats.get("total"));
-        model.addAttribute("historyCollected", historyStats.get("collected"));
-        model.addAttribute("historyWithVote", historyStats.getOrDefault("collectedWithVote", 0L));
-        model.addAttribute("historyWithoutVote", historyStats.getOrDefault("collectedWithoutVote", 0L));
-        model.addAttribute("historyPools", foodPoolService.getPoolsForFoodDate(viewingDate));
-        model.addAttribute("historyScans", foodPoolService.getScansForFoodDate(viewingDate));
+        // Generate report for date range
+        Map<String, Object> report = generateReport(start, end);
+        model.addAttribute("report", report);
         
         model.addAttribute("today", today.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
         model.addAttribute("todayDisplay", today.format(DateTimeFormatter.ofPattern("EEEE, MMM dd")));
-        model.addAttribute("prevDay", viewingDate.minusDays(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
-        model.addAttribute("nextDay", viewingDate.plusDays(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
-        model.addAttribute("prevWeek", viewingDate.minusWeeks(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
-        model.addAttribute("nextWeek", viewingDate.plusWeeks(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
         
         return "admin/dashboard";
     }
