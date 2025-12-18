@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard | Encipher Food Pool</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root{
             --primary:#0891b2;
@@ -33,18 +32,24 @@
         .header-right{display:flex;align-items:center;gap:12px}
         .role-badge{background:rgba(255,255,255,0.15);padding:4px 12px;border-radius:20px;font-size:0.7rem;font-weight:600}
         .date-display{font-size:0.85rem;opacity:0.9}
-        .container{max-width:1100px;margin:0 auto;padding:24px}
+        .container{max-width:1200px;margin:0 auto;padding:24px}
         
         .nav-links{display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap}
         .nav-link{color:var(--text-muted);text-decoration:none;padding:10px 18px;border-radius:8px;background:var(--bg-card);font-size:0.85rem;font-weight:500;border:1px solid var(--border);transition:all 0.2s}
         .nav-link:hover,.nav-link.active{background:var(--primary);color:#fff;border-color:var(--primary)}
         .nav-link.disabled{opacity:0.4;pointer-events:none}
         
-        h2{font-size:1rem;font-weight:600;margin:28px 0 16px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px}
+        .tabs{display:flex;gap:4px;margin-bottom:24px;background:var(--bg-card);padding:6px;border-radius:10px;width:fit-content}
+        .tab{padding:12px 24px;border:none;background:transparent;color:var(--text-muted);font-size:0.9rem;font-weight:500;cursor:pointer;border-radius:8px;transition:all 0.2s}
+        .tab.active{background:var(--primary);color:#fff}
+        .tab:hover:not(.active){background:var(--bg-elevated)}
+        
+        .dashboard-section{display:none}
+        .dashboard-section.active{display:block}
         
         .section{background:var(--bg-card);border-radius:12px;padding:24px;margin-bottom:20px;border:1px solid var(--border)}
-        .section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
-        .section-title{font-size:1.1rem;font-weight:600}
+        .section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+        .section-title{font-size:1.2rem;font-weight:600}
         .section-badge{padding:6px 14px;border-radius:20px;font-size:0.75rem;font-weight:600}
         .section-badge.active{background:rgba(16,185,129,0.15);color:var(--success)}
         .section-badge.closed{background:rgba(245,158,11,0.15);color:var(--warning)}
@@ -63,38 +68,44 @@
         .config-row{display:flex;gap:16px;justify-content:center;align-items:center;margin:20px 0;flex-wrap:wrap}
         .config-row label{font-size:0.85rem;color:var(--text-muted)}
         .config-row select,.config-row input{padding:10px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg-elevated);color:var(--text);font-size:0.9rem}
-        .config-row select:focus,.config-row input:focus{outline:none;border-color:var(--primary)}
         
         .btn{padding:12px 28px;border:none;border-radius:8px;font-size:0.95rem;font-weight:600;cursor:pointer;transition:all 0.2s}
         .btn-primary{background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff}
         .btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(8,145,178,0.3)}
         .btn-danger{background:var(--danger);color:#fff}
-        .btn-danger:hover{background:#dc2626}
         .btn-success{background:var(--success);color:#fff}
-        .btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+        .btn-sm{padding:8px 16px;font-size:0.8rem}
         
-        .date-filter{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:16px;background:var(--bg-elevated);border-radius:10px;margin-bottom:20px}
-        .date-filter label{font-size:0.85rem;color:var(--text-muted)}
-        .date-filter input{padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);font-family:inherit}
-        .date-filter .btn{padding:10px 20px}
-        .quick-btns{display:flex;gap:6px;flex-wrap:wrap}
-        .quick-btn{padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text-muted);font-size:0.75rem;cursor:pointer}
-        .quick-btn:hover,.quick-btn.active{border-color:var(--primary);color:var(--primary);background:rgba(8,145,178,0.1)}
-        
-        .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-        .stat-card{background:var(--bg-elevated);border-radius:10px;padding:20px;text-align:center}
-        .stat-value{font-size:2rem;font-weight:700}
+        .stats-row{display:flex;gap:16px;margin:20px 0;flex-wrap:wrap}
+        .stat-box{background:var(--bg-elevated);border-radius:10px;padding:20px 30px;text-align:center;flex:1;min-width:120px}
+        .stat-value{font-size:2.5rem;font-weight:700}
         .stat-value.veg{color:var(--success)}
         .stat-value.nonveg{color:#f97316}
         .stat-value.total{color:var(--accent)}
         .stat-value.collected{color:var(--warning)}
-        .stat-value.danger{color:var(--danger)}
-        .stat-label{font-size:0.75rem;color:var(--text-muted);margin-top:6px}
+        .stat-value.pending{color:var(--text-muted)}
+        .stat-value.no-vote{color:var(--danger)}
+        .stat-label{font-size:0.8rem;color:var(--text-muted);margin-top:6px}
         
-        .charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:20px 0}
-        .chart-card{background:var(--bg-elevated);border-radius:10px;padding:20px}
-        .chart-card h4{font-size:0.85rem;color:var(--text-muted);margin-bottom:16px}
-        .chart-container{height:180px;position:relative}
+        .vendor-summary{background:linear-gradient(135deg,rgba(16,185,129,0.1),rgba(13,148,136,0.05));border:2px solid var(--success);border-radius:12px;padding:24px;margin:20px 0}
+        .vendor-summary h3{color:var(--success);margin-bottom:16px;font-size:1rem}
+        .vendor-row{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)}
+        .vendor-row:last-child{border:none}
+        .vendor-row span{font-size:1.1rem}
+        .vendor-row strong{font-size:1.3rem}
+        
+        .employee-list{background:var(--bg-elevated);border-radius:10px;overflow:hidden;max-height:400px;overflow-y:auto}
+        .list-header{display:grid;grid-template-columns:2fr 1fr;padding:12px 20px;background:var(--bg-card);font-size:0.75rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;position:sticky;top:0}
+        .list-item{display:grid;grid-template-columns:2fr 1fr;padding:14px 20px;border-bottom:1px solid var(--border);align-items:center}
+        .list-item:last-child{border:none}
+        .list-name{font-weight:500;font-size:0.9rem}
+        .list-badge{padding:4px 12px;border-radius:16px;font-size:0.7rem;font-weight:600;text-align:center;width:fit-content}
+        .list-badge.veg{background:rgba(16,185,129,0.15);color:var(--success)}
+        .list-badge.nonveg{background:rgba(249,115,22,0.15);color:#f97316}
+        .list-badge.collected{background:rgba(6,182,212,0.15);color:var(--accent)}
+        .list-badge.pending{background:rgba(156,163,175,0.15);color:var(--text-muted)}
+        .list-badge.no-vote{background:rgba(239,68,68,0.15);color:var(--danger)}
+        .empty-state{padding:40px;text-align:center;color:var(--text-muted)}
         
         .notify-section{background:var(--bg-elevated);border-radius:10px;padding:20px;margin:16px 0}
         .notify-section h4{font-size:0.85rem;color:var(--text-muted);margin-bottom:14px}
@@ -102,28 +113,21 @@
         .notify-btn{padding:10px 16px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text);font-size:0.8rem;cursor:pointer;transition:all 0.2s}
         .notify-btn:hover{border-color:var(--primary);background:rgba(8,145,178,0.1)}
         .notify-btn.primary{background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;border:none}
-        .notify-btn:disabled{opacity:0.5;cursor:not-allowed}
         
         .message{padding:14px;border-radius:8px;margin:16px 0;text-align:center;font-size:0.9rem}
         .message.success{background:rgba(16,185,129,0.15);color:var(--success)}
         .message.error{background:rgba(239,68,68,0.15);color:var(--danger)}
         .hidden{display:none}
         
-        .data-table{width:100%;border-collapse:collapse}
-        .data-table th,.data-table td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--border);font-size:0.85rem}
-        .data-table th{background:var(--bg-card);color:var(--text-muted);font-weight:600;font-size:0.75rem;text-transform:uppercase}
-        .data-table .number{text-align:right}
-        .data-table .yes{color:var(--success)}
-        .data-table .no{color:var(--text-muted)}
+        .export-btn{display:flex;align-items:center;gap:8px}
+        .export-btn svg{width:18px;height:18px}
         
-        .export-row{display:flex;justify-content:flex-end;margin-top:16px;gap:12px}
+        .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px}
         
-        @media(max-width:900px){
-            .stats-grid{grid-template-columns:repeat(2,1fr)}
-            .charts-grid{grid-template-columns:1fr}
-        }
-        @media(max-width:600px){
-            .date-filter{flex-direction:column;align-items:stretch}
+        @media(max-width:800px){
+            .two-col{grid-template-columns:1fr}
+            .stats-row{flex-direction:column}
+            .stat-box{min-width:100%}
         }
     </style>
 </head>
@@ -143,246 +147,237 @@
     <div class="nav-links">
         <a href="/admin" class="nav-link active">Dashboard</a>
         <a href="/admin/menu" class="nav-link">Menu Settings</a>
-        <a href="/admin/employees" class="nav-link" th:classappend="${!isAdministrator} ? 'disabled'" 
-           th:title="${!isAdministrator} ? 'Administrators only'">Manage Users</a>
+        <a href="/admin/employees" class="nav-link" th:classappend="${!isAdministrator} ? 'disabled'">Manage Users</a>
     </div>
     
     <div id="message" class="message hidden"></div>
     
-    <!-- Survey Control -->
-    <div class="section">
-        <div class="section-header">
-            <span class="section-title">Food Survey Control</span>
-            <span th:if="${poolOpen}" class="section-badge active">SURVEY OPEN</span>
-            <span th:if="${!poolOpen && foodAvailable}" class="section-badge closed">SURVEY CLOSED</span>
-        </div>
+    <!-- Tab Navigation -->
+    <div class="tabs">
+        <button class="tab active" onclick="showTab('survey')">Survey (For Vendor)</button>
+        <button class="tab" onclick="showTab('collection')">Collection (Food Day)</button>
+    </div>
+    
+    <!-- ==================== SURVEY DASHBOARD ==================== -->
+    <div id="surveyDashboard" class="dashboard-section active">
         
-        <div class="pool-control">
-            <div th:if="${!foodAvailable}">
-                <div class="pool-status unavailable">Food Not Available Today</div>
-                <p style="color:var(--text-muted);margin:12px 0">Configure menu first to enable survey</p>
-                <a href="/admin/menu" class="btn btn-primary" style="display:inline-block;text-decoration:none;margin-top:12px">Configure Menu</a>
+        <!-- Survey Control -->
+        <div class="section">
+            <div class="section-header">
+                <span class="section-title">Start Food Survey</span>
+                <span th:if="${poolOpen}" class="section-badge active">SURVEY OPEN</span>
             </div>
             
-            <div th:if="${foodAvailable}">
-                <div th:if="${poolOpen}">
-                    <div class="pool-status open">SURVEY IS OPEN</div>
-                    <div class="food-date-box">
-                        Food Date: <strong th:text="${surveyFoodDateFormatted}">Tomorrow</strong>
-                    </div>
-                    <div th:if="${minutesLeft != null}" class="pool-timer">
-                        <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:4px">Auto-closes at <span th:text="${autoCloseTime}"></span></div>
-                        <span class="time" th:text="${minutesLeft} + ' min'"></span> remaining
-                    </div>
+            <div class="pool-control">
+                <div th:if="${!foodAvailable}">
+                    <div class="pool-status unavailable">Food Not Available Today</div>
+                    <p style="color:var(--text-muted);margin:12px 0">Configure menu first to enable survey</p>
+                    <a href="/admin/menu" class="btn btn-primary" style="display:inline-block;text-decoration:none;margin-top:12px">Configure Menu</a>
                 </div>
                 
-                <div th:unless="${poolOpen}">
-                    <div class="pool-status closed">NO ACTIVE SURVEY</div>
-                    <div class="config-row">
-                        <label>Duration:</label>
-                        <select id="duration">
-                            <option value="1">1 Hour</option>
-                            <option value="2">2 Hours</option>
-                            <option value="3">3 Hours</option>
-                            <option value="4">4 Hours</option>
-                            <option value="6" selected>6 Hours</option>
-                            <option value="8">8 Hours</option>
-                            <option value="12">12 Hours</option>
-                            <option value="24">24 Hours</option>
-                        </select>
-                        <label>Food Date:</label>
-                        <input type="date" id="foodDate" th:value="${#temporals.format(#temporals.createNow().plusDays(1), 'yyyy-MM-dd')}">
-                    </div>
-                </div>
-                
-                <div style="margin-top:20px">
-                    <button th:if="${!poolOpen}" class="btn btn-primary" onclick="openPool()">Start Survey</button>
-                    <button th:if="${poolOpen}" class="btn btn-danger" onclick="closePool()">Stop Survey</button>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Notification Buttons for Survey -->
-        <div th:if="${poolOpen}" class="notify-section">
-            <h4>Send Notifications</h4>
-            <div class="notify-buttons">
-                <button class="notify-btn" onclick="sendNotify('participate')">Remind to Vote</button>
-                <button class="notify-btn" onclick="sendNotify('lastcall')">Last Call to Vote</button>
-                <button class="notify-btn primary" onclick="showCustomNotify()">Custom Message</button>
-            </div>
-            <div id="customNotifyBox" class="hidden" style="margin-top:16px">
-                <textarea id="customMessage" placeholder="Enter your message..." style="width:100%;padding:12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);min-height:80px;font-family:inherit;resize:vertical"></textarea>
-                <button class="btn btn-primary" onclick="sendCustomNotify()" style="margin-top:12px">Send Message</button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Today's Collection (if food day) -->
-    <div th:if="${isFoodCollectionDay}" class="section">
-        <div class="section-header">
-            <span class="section-title">Today's Food Collection</span>
-            <span class="section-badge collection">COLLECTION DAY</span>
-        </div>
-        
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-value veg" th:text="${collectionVegCount}">0</div>
-                <div class="stat-label">Veg Voted</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value nonveg" th:text="${collectionNonvegCount}">0</div>
-                <div class="stat-label">Non-Veg Voted</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value total" th:text="${collectionTotalVoted}">0</div>
-                <div class="stat-label">Total Voted</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value collected" th:text="${collectionCollected}">0</div>
-                <div class="stat-label">Collected</div>
-            </div>
-        </div>
-        
-        <div class="notify-section">
-            <h4>Send Collection Reminders</h4>
-            <div class="notify-buttons">
-                <button class="notify-btn" onclick="sendNotify('eat')">Food Has Arrived</button>
-                <button class="notify-btn primary" onclick="showCustomNotify()">Custom Message</button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Current Survey Stats -->
-    <div th:if="${poolOpen || surveyTotalVoted > 0}" class="section">
-        <div class="section-header">
-            <span class="section-title">Survey for <span th:text="${surveyFoodDateFormatted}">Food Date</span></span>
-            <span th:if="${poolOpen}" class="section-badge active">ACTIVE</span>
-        </div>
-        
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-value veg" th:text="${surveyVegCount}">0</div>
-                <div class="stat-label">Veg</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value nonveg" th:text="${surveyNonvegCount}">0</div>
-                <div class="stat-label">Non-Veg</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value total" th:text="${surveyTotalVoted}">0</div>
-                <div class="stat-label">Total Voted</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value danger" th:text="${surveyNotVoted}">0</div>
-                <div class="stat-label">Not Voted</div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Date Range Report -->
-    <div class="section">
-        <div class="section-header">
-            <span class="section-title">Historical Data</span>
-        </div>
-        
-        <div class="date-filter">
-            <div>
-                <label>From:</label>
-                <input type="date" id="startDate" th:value="${startDate}">
-            </div>
-            <div>
-                <label>To:</label>
-                <input type="date" id="endDate" th:value="${endDate}">
-            </div>
-            <button class="btn btn-primary" onclick="loadReport()">View Data</button>
-            <div class="quick-btns">
-                <button class="quick-btn" onclick="setRange(7)">7 Days</button>
-                <button class="quick-btn" onclick="setRange(30)">30 Days</button>
-                <button class="quick-btn" onclick="setRange(90)">90 Days</button>
-            </div>
-        </div>
-        
-        <!-- Report Data -->
-        <div id="reportData">
-            <div th:if="${report != null}">
-                <h2 style="margin-top:0">Summary: <span th:text="${report.startDate}">Start</span> to <span th:text="${report.endDate}">End</span></h2>
-                
-                <div class="stats-grid" style="grid-template-columns:repeat(5,1fr)">
-                    <div class="stat-card">
-                        <div class="stat-value" style="color:var(--primary)" th:text="${report.foodPoolDays}">0</div>
-                        <div class="stat-label">Active Days</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value total" th:text="${report.totalVoted}">0</div>
-                        <div class="stat-label">Total Votes</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value veg" th:text="${report.totalVeg}">0</div>
-                        <div class="stat-label">Veg Votes</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value nonveg" th:text="${report.totalNonveg}">0</div>
-                        <div class="stat-label">Non-Veg Votes</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value collected" th:text="${report.totalCollected}">0</div>
-                        <div class="stat-label">Total Collected</div>
-                    </div>
-                </div>
-                
-                <div class="charts-grid">
-                    <div class="chart-card">
-                        <h4>Vote Distribution</h4>
-                        <div class="chart-container">
-                            <canvas id="voteChart"></canvas>
+                <div th:if="${foodAvailable}">
+                    <div th:if="${poolOpen}">
+                        <div class="pool-status open">SURVEY IS OPEN</div>
+                        <div class="food-date-box">
+                            Food will be served on: <strong th:text="${surveyFoodDateFormatted}">Tomorrow</strong>
                         </div>
-                    </div>
-                    <div class="chart-card">
-                        <h4>Collection Status</h4>
-                        <div class="chart-container">
-                            <canvas id="collectionChart"></canvas>
+                        <div th:if="${minutesLeft != null}" class="pool-timer">
+                            <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:4px">Auto-closes at <span th:text="${autoCloseTime}"></span></div>
+                            <span class="time" th:text="${minutesLeft} + ' min'"></span> remaining
                         </div>
+                        <button class="btn btn-danger" onclick="closePool()" style="margin-top:16px">Stop Survey</button>
+                    </div>
+                    
+                    <div th:unless="${poolOpen}">
+                        <div class="pool-status closed">NO ACTIVE SURVEY</div>
+                        <p style="color:var(--text-muted);margin:12px 0">Start a survey to collect food preferences for vendor</p>
+                        <div class="config-row">
+                            <label>Duration:</label>
+                            <select id="duration">
+                                <option value="1">1 Hour</option>
+                                <option value="2">2 Hours</option>
+                                <option value="3">3 Hours</option>
+                                <option value="4">4 Hours</option>
+                                <option value="6" selected>6 Hours</option>
+                                <option value="8">8 Hours</option>
+                                <option value="12">12 Hours</option>
+                                <option value="24">24 Hours</option>
+                            </select>
+                            <label>Food Date:</label>
+                            <input type="date" id="foodDate" th:value="${#temporals.format(#temporals.createNow().plusDays(1), 'yyyy-MM-dd')}">
+                        </div>
+                        <button class="btn btn-primary" onclick="openPool()" style="margin-top:16px">Start Survey</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Vendor Summary (Show when survey has votes) -->
+        <div th:if="${surveyTotalVoted > 0}" class="section">
+            <div class="section-header">
+                <span class="section-title">Vendor Summary - Food for <span th:text="${surveyFoodDateFormatted}">Date</span></span>
+                <button class="btn btn-success btn-sm export-btn" onclick="exportSurvey()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Export for Vendor
+                </button>
+            </div>
+            
+            <div class="vendor-summary">
+                <h3>Order Summary for Vendor</h3>
+                <div class="vendor-row">
+                    <span>Vegetarian Meals</span>
+                    <strong th:text="${surveyVegCount}" style="color:var(--success)">0</strong>
+                </div>
+                <div class="vendor-row">
+                    <span>Non-Vegetarian Meals</span>
+                    <strong th:text="${surveyNonvegCount}" style="color:#f97316">0</strong>
+                </div>
+                <div class="vendor-row" style="border-top:2px solid var(--success);padding-top:16px;margin-top:8px">
+                    <span style="font-weight:600">TOTAL MEALS REQUIRED</span>
+                    <strong th:text="${surveyTotalVoted}" style="color:var(--accent);font-size:1.5rem">0</strong>
+                </div>
+            </div>
+            
+            <div class="two-col">
+                <div>
+                    <h4 style="margin-bottom:12px;color:var(--success)">Vegetarian (<span th:text="${surveyVegCount}">0</span>)</h4>
+                    <div class="employee-list">
+                        <div class="list-header">
+                            <span>Employee Name</span>
+                            <span>Choice</span>
+                        </div>
+                        <div th:each="pool : ${surveyPools}" th:if="${pool.foodType == 'veg'}" class="list-item">
+                            <span class="list-name" th:text="${pool.employeeName}">Name</span>
+                            <span class="list-badge veg">VEG</span>
+                        </div>
+                        <div th:if="${surveyVegCount == 0}" class="empty-state">No vegetarian orders</div>
+                    </div>
+                </div>
+                <div>
+                    <h4 style="margin-bottom:12px;color:#f97316">Non-Vegetarian (<span th:text="${surveyNonvegCount}">0</span>)</h4>
+                    <div class="employee-list">
+                        <div class="list-header">
+                            <span>Employee Name</span>
+                            <span>Choice</span>
+                        </div>
+                        <div th:each="pool : ${surveyPools}" th:if="${pool.foodType == 'nonveg'}" class="list-item">
+                            <span class="list-name" th:text="${pool.employeeName}">Name</span>
+                            <span class="list-badge nonveg">NON-VEG</span>
+                        </div>
+                        <div th:if="${surveyNonvegCount == 0}" class="empty-state">No non-vegetarian orders</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div th:if="${poolOpen}" class="notify-section">
+                <h4>Send Reminders</h4>
+                <div class="notify-buttons">
+                    <button class="notify-btn" onclick="sendNotify('participate')">Remind to Vote</button>
+                    <button class="notify-btn" onclick="sendNotify('lastcall')">Last Call to Vote</button>
+                    <button class="notify-btn primary" onclick="showCustomNotify()">Custom Message</button>
+                </div>
+                <div id="customNotifyBox" class="hidden" style="margin-top:16px">
+                    <textarea id="customMessage" placeholder="Enter your message..." style="width:100%;padding:12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);min-height:80px;font-family:inherit;resize:vertical"></textarea>
+                    <button class="btn btn-primary btn-sm" onclick="sendCustomNotify()" style="margin-top:12px">Send Message</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ==================== COLLECTION DASHBOARD ==================== -->
+    <div id="collectionDashboard" class="dashboard-section">
+        
+        <div th:if="${!isFoodCollectionDay}" class="section">
+            <div class="pool-control">
+                <div class="pool-status" style="color:var(--text-muted)">No Food Collection Today</div>
+                <p style="color:var(--text-muted);margin:12px 0">There is no scheduled food for today. Start a survey in the Survey tab.</p>
+            </div>
+        </div>
+        
+        <div th:if="${isFoodCollectionDay}">
+            <!-- Collection Stats -->
+            <div class="section">
+                <div class="section-header">
+                    <span class="section-title">Today's Food Collection</span>
+                    <div style="display:flex;gap:8px">
+                        <span class="section-badge collection">COLLECTION DAY</span>
+                        <button class="btn btn-success btn-sm export-btn" onclick="exportCollection()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                            </svg>
+                            Export
+                        </button>
                     </div>
                 </div>
                 
-                <h2>Daily Breakdown</h2>
-                <div style="overflow-x:auto;border-radius:8px;border:1px solid var(--border)">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Vote Day</th>
-                                <th>Collection Day</th>
-                                <th class="number">Veg</th>
-                                <th class="number">Non-Veg</th>
-                                <th class="number">Total Voted</th>
-                                <th class="number">Collected</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr th:each="day : ${report.dailyData}">
-                                <td th:text="${day.dateDisplay}">Date</td>
-                                <td th:class="${day.isVoteDay} ? 'yes' : 'no'" th:text="${day.isVoteDay} ? 'Yes' : 'No'">-</td>
-                                <td th:class="${day.isCollectionDay} ? 'yes' : 'no'" th:text="${day.isCollectionDay} ? 'Yes' : 'No'">-</td>
-                                <td class="number" th:text="${day.veg}">0</td>
-                                <td class="number" th:text="${day.nonveg}">0</td>
-                                <td class="number" th:text="${day.totalVoted}">0</td>
-                                <td class="number" th:text="${day.collected}">0</td>
-                            </tr>
-                            <tr th:if="${#lists.isEmpty(report.dailyData)}">
-                                <td colspan="7" style="text-align:center;color:var(--text-muted)">No data for selected date range</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div class="stats-row">
+                    <div class="stat-box">
+                        <div class="stat-value total" th:text="${collectionTotalVoted}">0</div>
+                        <div class="stat-label">Expected (Voted)</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value collected" th:text="${collectionCollected}">0</div>
+                        <div class="stat-label">Collected</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value pending" th:text="${collectionTotalVoted - collectionCollected}">0</div>
+                        <div class="stat-label">Not Yet Collected</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value no-vote" th:text="${collectionWithoutVote}">0</div>
+                        <div class="stat-label">Collected Without Vote</div>
+                    </div>
                 </div>
                 
-                <div class="export-row">
-                    <button class="btn btn-success" onclick="exportReport()" style="display:flex;align-items:center;gap:8px">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-                        </svg>
-                        Export to Excel (with Names &amp; Emails)
-                    </button>
+                <div class="notify-section">
+                    <h4>Send Reminders</h4>
+                    <div class="notify-buttons">
+                        <button class="notify-btn" onclick="sendNotify('eat')">Food Has Arrived</button>
+                        <button class="notify-btn primary" onclick="showCustomNotify()">Custom Message</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Collection Lists -->
+            <div class="two-col">
+                <div class="section">
+                    <div class="section-header">
+                        <span class="section-title" style="color:var(--warning)">Collected (<span th:text="${collectionCollected}">0</span>)</span>
+                    </div>
+                    <div class="employee-list">
+                        <div class="list-header">
+                            <span>Employee Name</span>
+                            <span>Status</span>
+                        </div>
+                        <div th:each="scan : ${collectionScans}" class="list-item">
+                            <span class="list-name" th:text="${scan.employeeName}">Name</span>
+                            <span class="list-badge" th:classappend="${scan.didVote} ? 'collected' : 'no-vote'" 
+                                  th:text="${scan.didVote} ? 'Collected' : 'No Vote'">Status</span>
+                        </div>
+                        <div th:if="${#lists.isEmpty(collectionScans)}" class="empty-state">No one has collected yet</div>
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <div class="section-header">
+                        <span class="section-title" style="color:var(--text-muted)">Pending (<span th:text="${collectionTotalVoted - collectionCollected}">0</span>)</span>
+                    </div>
+                    <div class="employee-list">
+                        <div class="list-header">
+                            <span>Employee Name</span>
+                            <span>Choice</span>
+                        </div>
+                        <th:block th:each="pool : ${collectionPools}">
+                            <div th:unless="${#lists.contains(collectedEmployeeIds, pool.employeeId)}" class="list-item">
+                                <span class="list-name" th:text="${pool.employeeName}">Name</span>
+                                <span class="list-badge" th:classappend="${pool.foodType == 'veg'} ? 'veg' : 'nonveg'" 
+                                      th:text="${pool.foodType == 'veg'} ? 'VEG' : 'NON-VEG'">Choice</span>
+                            </div>
+                        </th:block>
+                        <div th:if="${collectionTotalVoted - collectionCollected <= 0}" class="empty-state">Everyone has collected</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -390,45 +385,14 @@
 </div>
 
 <script th:inline="javascript">
-const reportData = [[${report}]] || {};
+const surveyFoodDate = [[${surveyFoodDate}]];
 
-// Charts
-if (document.getElementById('voteChart') && reportData.totalVeg !== undefined) {
-    new Chart(document.getElementById('voteChart'), {
-        type: 'doughnut',
-        data: {
-            labels: ['Veg', 'Non-Veg'],
-            datasets: [{
-                data: [reportData.totalVeg || 0, reportData.totalNonveg || 0],
-                backgroundColor: ['#10b981', '#f97316'],
-                borderWidth: 0
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {legend: {position: 'bottom', labels: {color: '#9ca3af', padding: 12}}}
-        }
-    });
-}
-
-if (document.getElementById('collectionChart') && reportData.totalCollected !== undefined) {
-    new Chart(document.getElementById('collectionChart'), {
-        type: 'doughnut',
-        data: {
-            labels: ['Collected', 'Not Collected'],
-            datasets: [{
-                data: [reportData.totalCollected || 0, reportData.totalNotCollected || 0],
-                backgroundColor: ['#06b6d4', '#ef4444'],
-                borderWidth: 0
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {legend: {position: 'bottom', labels: {color: '#9ca3af', padding: 12}}}
-        }
-    });
+function showTab(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.dashboard-section').forEach(s => s.classList.remove('active'));
+    
+    event.target.classList.add('active');
+    document.getElementById(tab + 'Dashboard').classList.add('active');
 }
 
 function showMessage(text, isSuccess) {
@@ -438,50 +402,10 @@ function showMessage(text, isSuccess) {
     setTimeout(() => msg.classList.add('hidden'), 4000);
 }
 
-function setRange(days) {
-    const end = new Date();
-    const start = new Date();
-    start.setDate(end.getDate() - days + 1);
-    
-    document.getElementById('startDate').value = formatDate(start);
-    document.getElementById('endDate').value = formatDate(end);
-    
-    document.querySelectorAll('.quick-btn').forEach(b => b.classList.remove('active'));
-    event.target.classList.add('active');
-}
-
-function formatDate(date) {
-    return date.toISOString().split('T')[0];
-}
-
-function loadReport() {
-    const startDate = document.getElementById('startDate').value;
-    const endDate = document.getElementById('endDate').value;
-    
-    if (!startDate || !endDate) {
-        showMessage('Please select both start and end dates', false);
-        return;
-    }
-    
-    window.location.href = '/admin?startDate=' + startDate + '&endDate=' + endDate;
-}
-
-function exportReport() {
-    const startDate = document.getElementById('startDate').value;
-    const endDate = document.getElementById('endDate').value;
-    
-    if (!startDate || !endDate) {
-        showMessage('Please select date range first', false);
-        return;
-    }
-    
-    window.location.href = '/admin/reports/export?startDate=' + startDate + '&endDate=' + endDate;
-}
-
 async function openPool() {
     const duration = document.getElementById('duration').value;
     const foodDate = document.getElementById('foodDate').value;
-    if (!confirm('Start survey for ' + duration + ' hours?')) return;
+    if (!confirm('Start survey for ' + duration + ' hours?\nFood will be served on: ' + foodDate)) return;
     
     const res = await fetch('/admin/pool/open', {
         method: 'POST',
@@ -508,6 +432,7 @@ async function closePool() {
 async function sendNotify(type) {
     const btn = event.target;
     btn.disabled = true;
+    const originalText = btn.textContent;
     btn.textContent = 'Sending...';
     
     try {
@@ -518,8 +443,7 @@ async function sendNotify(type) {
         showMessage('Failed to send notification', false);
     } finally {
         btn.disabled = false;
-        btn.textContent = type === 'participate' ? 'Remind to Vote' : 
-                         type === 'lastcall' ? 'Last Call to Vote' : 'Food Has Arrived';
+        btn.textContent = originalText;
     }
 }
 
@@ -549,6 +473,14 @@ async function sendCustomNotify() {
     } catch (e) {
         showMessage('Failed to send notification', false);
     }
+}
+
+function exportSurvey() {
+    window.location.href = '/admin/export/survey';
+}
+
+function exportCollection() {
+    window.location.href = '/admin/export/collection';
 }
 
 // Auto-refresh when survey is active

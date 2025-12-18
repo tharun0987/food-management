@@ -85,6 +85,17 @@ public class AdminController {
             model.addAttribute("collectionCollected", collectionStats.get("collected"));
             model.addAttribute("collectionWithVote", collectionStats.getOrDefault("collectedWithVote", 0L));
             model.addAttribute("collectionWithoutVote", collectionStats.getOrDefault("collectedWithoutVote", 0L));
+            
+            List<FoodPool> collectionPools = foodPoolService.getPoolsForFoodDate(today);
+            List<FoodScan> collectionScans = foodPoolService.getTodayScans();
+            model.addAttribute("collectionPools", collectionPools);
+            model.addAttribute("collectionScans", collectionScans);
+            
+            // List of employee IDs who have collected
+            List<String> collectedEmployeeIds = collectionScans.stream()
+                    .map(FoodScan::getEmployeeId)
+                    .collect(Collectors.toList());
+            model.addAttribute("collectedEmployeeIds", collectedEmployeeIds);
         }
         
         // Current Survey Stats
@@ -92,6 +103,7 @@ public class AdminController {
         model.addAttribute("surveyVegCount", surveyStats.get("veg"));
         model.addAttribute("surveyNonvegCount", surveyStats.get("nonveg"));
         model.addAttribute("surveyTotalVoted", surveyStats.get("total"));
+        model.addAttribute("surveyPools", foodPoolService.getPoolsForFoodDate(surveyFoodDate));
         
         long totalEmployees = employeeService.getAllActiveEmployees().size();
         model.addAttribute("totalEmployees", totalEmployees);
@@ -220,6 +232,161 @@ public class AdminController {
             return ResponseEntity.ok(report);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+    // ============== SIMPLE EXPORTS ==============
+    
+    @GetMapping("/export/survey")
+    public ResponseEntity<byte[]> exportSurvey() {
+        try {
+            MenuConfig menu = foodPoolService.getTodayMenu();
+            LocalDate foodDate = menu.getFoodDate() != null ? menu.getFoodDate() : LocalDate.now().plusDays(1);
+            List<FoodPool> pools = foodPoolService.getPoolsForFoodDate(foodDate);
+            
+            byte[] excelData = generateSurveyExcel(pools, foodDate);
+            String filename = "food_order_" + foodDate + ".xlsx";
+            
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                    .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                    .body(excelData);
+        } catch (Exception e) {
+            log.error("Error exporting survey: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
+    }
+    
+    @GetMapping("/export/collection")
+    public ResponseEntity<byte[]> exportCollection() {
+        try {
+            LocalDate today = LocalDate.now();
+            List<FoodPool> pools = foodPoolService.getPoolsForFoodDate(today);
+            List<FoodScan> scans = foodPoolService.getTodayScans();
+            
+            byte[] excelData = generateCollectionExcel(pools, scans, today);
+            String filename = "food_collection_" + today + ".xlsx";
+            
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                    .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                    .body(excelData);
+        } catch (Exception e) {
+            log.error("Error exporting collection: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
+    }
+    
+    private byte[] generateSurveyExcel(List<FoodPool> pools, LocalDate foodDate) throws Exception {
+        try (Workbook workbook = new XSSFWorkbook()) {
+            CellStyle headerStyle = workbook.createCellStyle();
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerStyle.setFont(headerFont);
+            headerStyle.setFillForegroundColor(IndexedColors.TEAL.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            
+            // Summary
+            Sheet summarySheet = workbook.createSheet("Order Summary");
+            int row = 0;
+            createRow(summarySheet, row++, null, "Food Order for " + foodDate.format(DateTimeFormatter.ofPattern("EEEE, MMM dd, yyyy")));
+            row++;
+            
+            long vegCount = pools.stream().filter(p -> "veg".equals(p.getFoodType())).count();
+            long nonvegCount = pools.stream().filter(p -> "nonveg".equals(p.getFoodType())).count();
+            
+            createRow(summarySheet, row++, null, "Vegetarian", String.valueOf(vegCount));
+            createRow(summarySheet, row++, null, "Non-Vegetarian", String.valueOf(nonvegCount));
+            createRow(summarySheet, row++, null, "TOTAL", String.valueOf(pools.size()));
+            
+            summarySheet.autoSizeColumn(0);
+            summarySheet.autoSizeColumn(1);
+            
+            // All Orders
+            Sheet ordersSheet = workbook.createSheet("All Orders");
+            Row header = ordersSheet.createRow(0);
+            String[] headers = {"Name", "Choice"};
+            for (int i = 0; i < headers.length; i++) {
+                Cell cell = header.createCell(i);
+                cell.setCellValue(headers[i]);
+                cell.setCellStyle(headerStyle);
+            }
+            
+            int rowNum = 1;
+            for (FoodPool pool : pools) {
+                Row r = ordersSheet.createRow(rowNum++);
+                r.createCell(0).setCellValue(pool.getEmployeeName());
+                r.createCell(1).setCellValue(pool.getFoodType() != null ? pool.getFoodType().toUpperCase() : "");
+            }
+            
+            ordersSheet.autoSizeColumn(0);
+            ordersSheet.autoSizeColumn(1);
+            
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            workbook.write(out);
+            return out.toByteArray();
+        }
+    }
+    
+    private byte[] generateCollectionExcel(List<FoodPool> pools, List<FoodScan> scans, LocalDate date) throws Exception {
+        try (Workbook workbook = new XSSFWorkbook()) {
+            CellStyle headerStyle = workbook.createCellStyle();
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerStyle.setFont(headerFont);
+            headerStyle.setFillForegroundColor(IndexedColors.TEAL.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            
+            Set<String> collectedIds = scans.stream().map(FoodScan::getEmployeeId).collect(Collectors.toSet());
+            
+            // Summary
+            Sheet summarySheet = workbook.createSheet("Summary");
+            int row = 0;
+            createRow(summarySheet, row++, null, "Food Collection - " + date.format(DateTimeFormatter.ofPattern("EEEE, MMM dd, yyyy")));
+            row++;
+            createRow(summarySheet, row++, null, "Total Expected", String.valueOf(pools.size()));
+            createRow(summarySheet, row++, null, "Collected", String.valueOf(scans.size()));
+            createRow(summarySheet, row++, null, "Not Collected", String.valueOf(pools.size() - collectedIds.size()));
+            createRow(summarySheet, row++, null, "Collected Without Vote", String.valueOf(scans.stream().filter(s -> !s.isDidVote()).count()));
+            
+            summarySheet.autoSizeColumn(0);
+            summarySheet.autoSizeColumn(1);
+            
+            // Collected
+            Sheet collectedSheet = workbook.createSheet("Collected");
+            Row h1 = collectedSheet.createRow(0);
+            h1.createCell(0).setCellValue("Name"); h1.getCell(0).setCellStyle(headerStyle);
+            h1.createCell(1).setCellValue("Status"); h1.getCell(1).setCellStyle(headerStyle);
+            
+            int r1 = 1;
+            for (FoodScan scan : scans) {
+                Row r = collectedSheet.createRow(r1++);
+                r.createCell(0).setCellValue(scan.getEmployeeName());
+                r.createCell(1).setCellValue(scan.isDidVote() ? "Voted" : "Did Not Vote");
+            }
+            collectedSheet.autoSizeColumn(0);
+            collectedSheet.autoSizeColumn(1);
+            
+            // Not Collected
+            Sheet notCollectedSheet = workbook.createSheet("Not Collected");
+            Row h2 = notCollectedSheet.createRow(0);
+            h2.createCell(0).setCellValue("Name"); h2.getCell(0).setCellStyle(headerStyle);
+            h2.createCell(1).setCellValue("Choice"); h2.getCell(1).setCellStyle(headerStyle);
+            
+            int r2 = 1;
+            for (FoodPool pool : pools) {
+                if (!collectedIds.contains(pool.getEmployeeId())) {
+                    Row r = notCollectedSheet.createRow(r2++);
+                    r.createCell(0).setCellValue(pool.getEmployeeName());
+                    r.createCell(1).setCellValue(pool.getFoodType() != null ? pool.getFoodType().toUpperCase() : "");
+                }
+            }
+            notCollectedSheet.autoSizeColumn(0);
+            notCollectedSheet.autoSizeColumn(1);
+            
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            workbook.write(out);
+            return out.toByteArray();
         }
     }
     
