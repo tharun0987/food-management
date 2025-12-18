@@ -124,10 +124,24 @@
         
         .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px}
         
+        .date-filter{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:16px;background:var(--bg-elevated);border-radius:10px;margin-bottom:20px}
+        .date-filter label{font-size:0.85rem;color:var(--text-muted)}
+        .date-filter input{padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);font-family:inherit}
+        .date-filter .btn{padding:10px 20px}
+        .quick-btns{display:flex;gap:6px;flex-wrap:wrap}
+        .quick-btn{padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text-muted);font-size:0.75rem;cursor:pointer}
+        .quick-btn:hover,.quick-btn.active{border-color:var(--primary);color:var(--primary);background:rgba(8,145,178,0.1)}
+        
+        .data-table{width:100%;border-collapse:collapse}
+        .data-table th,.data-table td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--border);font-size:0.85rem}
+        .data-table th{background:var(--bg-card);color:var(--text-muted);font-weight:600;font-size:0.75rem;text-transform:uppercase}
+        .data-table .number{text-align:right}
+        
         @media(max-width:800px){
             .two-col{grid-template-columns:1fr}
             .stats-row{flex-direction:column}
             .stat-box{min-width:100%}
+            .date-filter{flex-direction:column;align-items:stretch}
         }
     </style>
 </head>
@@ -156,6 +170,7 @@
     <div class="tabs">
         <button class="tab active" onclick="showTab('survey')">Survey (For Vendor)</button>
         <button class="tab" onclick="showTab('collection')">Collection (Food Day)</button>
+        <button class="tab" onclick="showTab('reports')">Reports</button>
     </div>
     
     <!-- ==================== SURVEY DASHBOARD ==================== -->
@@ -212,7 +227,7 @@
             </div>
         </div>
         
-        <!-- Vendor Summary (Show when survey has votes) -->
+        <!-- Vendor Summary -->
         <div th:if="${surveyTotalVoted > 0}" class="section">
             <div class="section-header">
                 <span class="section-title">Vendor Summary - Food for <span th:text="${surveyFoodDateFormatted}">Date</span></span>
@@ -276,11 +291,11 @@
                 <div class="notify-buttons">
                     <button class="notify-btn" onclick="sendNotify('participate')">Remind to Vote</button>
                     <button class="notify-btn" onclick="sendNotify('lastcall')">Last Call to Vote</button>
-                    <button class="notify-btn primary" onclick="showCustomNotify()">Custom Message</button>
+                    <button class="notify-btn primary" onclick="showCustomNotify('survey')">Custom Message</button>
                 </div>
-                <div id="customNotifyBox" class="hidden" style="margin-top:16px">
-                    <textarea id="customMessage" placeholder="Enter your message..." style="width:100%;padding:12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);min-height:80px;font-family:inherit;resize:vertical"></textarea>
-                    <button class="btn btn-primary btn-sm" onclick="sendCustomNotify()" style="margin-top:12px">Send Message</button>
+                <div id="customNotifyBoxSurvey" class="hidden" style="margin-top:16px">
+                    <textarea id="customMessageSurvey" placeholder="Enter your message..." style="width:100%;padding:12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);min-height:80px;font-family:inherit;resize:vertical"></textarea>
+                    <button class="btn btn-primary btn-sm" onclick="sendCustomNotify('survey')" style="margin-top:12px">Send Message</button>
                 </div>
             </div>
         </div>
@@ -335,7 +350,11 @@
                     <h4>Send Reminders</h4>
                     <div class="notify-buttons">
                         <button class="notify-btn" onclick="sendNotify('eat')">Food Has Arrived</button>
-                        <button class="notify-btn primary" onclick="showCustomNotify()">Custom Message</button>
+                        <button class="notify-btn primary" onclick="showCustomNotify('collection')">Custom Message</button>
+                    </div>
+                    <div id="customNotifyBoxCollection" class="hidden" style="margin-top:16px">
+                        <textarea id="customMessageCollection" placeholder="Enter your message..." style="width:100%;padding:12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);min-height:80px;font-family:inherit;resize:vertical"></textarea>
+                        <button class="btn btn-primary btn-sm" onclick="sendCustomNotify('collection')" style="margin-top:12px">Send Message</button>
                     </div>
                 </div>
             </div>
@@ -382,11 +401,89 @@
             </div>
         </div>
     </div>
+    
+    <!-- ==================== REPORTS DASHBOARD ==================== -->
+    <div id="reportsDashboard" class="dashboard-section">
+        <div class="section">
+            <div class="section-header">
+                <span class="section-title">Historical Reports</span>
+            </div>
+            
+            <div class="date-filter">
+                <div>
+                    <label>From:</label>
+                    <input type="date" id="startDate" th:value="${startDate}">
+                </div>
+                <div>
+                    <label>To:</label>
+                    <input type="date" id="endDate" th:value="${endDate}">
+                </div>
+                <button class="btn btn-primary" onclick="loadReport()">View Data</button>
+                <div class="quick-btns">
+                    <button class="quick-btn" onclick="setRange(7)">7 Days</button>
+                    <button class="quick-btn" onclick="setRange(30)">30 Days</button>
+                    <button class="quick-btn" onclick="setRange(90)">90 Days</button>
+                </div>
+            </div>
+            
+            <div th:if="${report != null && report.foodPoolDays > 0}">
+                <div class="stats-row">
+                    <div class="stat-box">
+                        <div class="stat-value" style="color:var(--primary)" th:text="${report.foodPoolDays}">0</div>
+                        <div class="stat-label">Active Days</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value total" th:text="${report.totalVoted}">0</div>
+                        <div class="stat-label">Total Votes</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value collected" th:text="${report.totalCollected}">0</div>
+                        <div class="stat-label">Total Collected</div>
+                    </div>
+                </div>
+                
+                <h4 style="margin:24px 0 12px;color:var(--text-muted)">Daily Breakdown</h4>
+                <div style="overflow-x:auto;border-radius:8px;border:1px solid var(--border)">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th class="number">Veg</th>
+                                <th class="number">Non-Veg</th>
+                                <th class="number">Total Voted</th>
+                                <th class="number">Collected</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="day : ${report.dailyData}">
+                                <td th:text="${day.dateDisplay}">Date</td>
+                                <td class="number" th:text="${day.veg}">0</td>
+                                <td class="number" th:text="${day.nonveg}">0</td>
+                                <td class="number" th:text="${day.totalVoted}">0</td>
+                                <td class="number" th:text="${day.collected}">0</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div style="display:flex;justify-content:flex-end;margin-top:16px">
+                    <button class="btn btn-success export-btn" onclick="exportReport()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        Export to Excel
+                    </button>
+                </div>
+            </div>
+            
+            <div th:if="${report == null || report.foodPoolDays == 0}" class="empty-state">
+                <p>Select a date range and click "View Data" to see historical reports</p>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script th:inline="javascript">
-const surveyFoodDate = [[${surveyFoodDate}]];
-
 function showTab(tab) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.dashboard-section').forEach(s => s.classList.remove('active'));
@@ -400,6 +497,46 @@ function showMessage(text, isSuccess) {
     msg.textContent = text;
     msg.className = 'message ' + (isSuccess ? 'success' : 'error');
     setTimeout(() => msg.classList.add('hidden'), 4000);
+}
+
+function setRange(days) {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - days + 1);
+    
+    document.getElementById('startDate').value = formatDate(start);
+    document.getElementById('endDate').value = formatDate(end);
+    
+    document.querySelectorAll('.quick-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+}
+
+function formatDate(date) {
+    return date.toISOString().split('T')[0];
+}
+
+function loadReport() {
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    
+    if (!startDate || !endDate) {
+        showMessage('Please select both start and end dates', false);
+        return;
+    }
+    
+    window.location.href = '/admin?startDate=' + startDate + '&endDate=' + endDate + '&tab=reports';
+}
+
+function exportReport() {
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    
+    if (!startDate || !endDate) {
+        showMessage('Please select date range first', false);
+        return;
+    }
+    
+    window.location.href = '/admin/reports/export?startDate=' + startDate + '&endDate=' + endDate;
 }
 
 async function openPool() {
@@ -447,12 +584,12 @@ async function sendNotify(type) {
     }
 }
 
-function showCustomNotify() {
-    document.getElementById('customNotifyBox').classList.toggle('hidden');
+function showCustomNotify(section) {
+    document.getElementById('customNotifyBox' + section.charAt(0).toUpperCase() + section.slice(1)).classList.toggle('hidden');
 }
 
-async function sendCustomNotify() {
-    const message = document.getElementById('customMessage').value.trim();
+async function sendCustomNotify(section) {
+    const message = document.getElementById('customMessage' + section.charAt(0).toUpperCase() + section.slice(1)).value.trim();
     if (!message) {
         showMessage('Please enter a message', false);
         return;
@@ -467,8 +604,8 @@ async function sendCustomNotify() {
         const data = await res.json();
         showMessage(data.message || data.error, data.success);
         if (data.success) {
-            document.getElementById('customMessage').value = '';
-            document.getElementById('customNotifyBox').classList.add('hidden');
+            document.getElementById('customMessage' + section.charAt(0).toUpperCase() + section.slice(1)).value = '';
+            document.getElementById('customNotifyBox' + section.charAt(0).toUpperCase() + section.slice(1)).classList.add('hidden');
         }
     } catch (e) {
         showMessage('Failed to send notification', false);
@@ -481,6 +618,15 @@ function exportSurvey() {
 
 function exportCollection() {
     window.location.href = '/admin/export/collection';
+}
+
+// Check URL param to open specific tab
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('tab') === 'reports') {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.dashboard-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.tab')[2].classList.add('active');
+    document.getElementById('reportsDashboard').classList.add('active');
 }
 
 // Auto-refresh when survey is active
