@@ -94,7 +94,7 @@
         .vendor-row span{font-size:1.1rem}
         .vendor-row strong{font-size:1.3rem}
         
-        .employee-list{background:var(--bg-elevated);border-radius:10px;overflow:hidden;max-height:400px;overflow-y:auto}
+        .employee-list{background:var(--bg-elevated);border-radius:10px;overflow:hidden;max-height:350px;overflow-y:auto}
         .list-header{display:grid;grid-template-columns:2fr 1fr;padding:12px 20px;background:var(--bg-card);font-size:0.75rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;position:sticky;top:0}
         .list-item{display:grid;grid-template-columns:2fr 1fr;padding:14px 20px;border-bottom:1px solid var(--border);align-items:center}
         .list-item:last-child{border:none}
@@ -170,7 +170,7 @@
     <div class="tabs">
         <button class="tab active" onclick="showTab('survey')">Survey (For Vendor)</button>
         <button class="tab" onclick="showTab('collection')">Collection (Food Day)</button>
-        <button class="tab" onclick="showTab('reports')">Reports</button>
+        <button class="tab" onclick="showTab('history')">History / Reports</button>
     </div>
     
     <!-- ==================== SURVEY DASHBOARD ==================== -->
@@ -259,10 +259,7 @@
                 <div>
                     <h4 style="margin-bottom:12px;color:var(--success)">Vegetarian (<span th:text="${surveyVegCount}">0</span>)</h4>
                     <div class="employee-list">
-                        <div class="list-header">
-                            <span>Employee Name</span>
-                            <span>Choice</span>
-                        </div>
+                        <div class="list-header"><span>Name</span><span>Choice</span></div>
                         <div th:each="pool : ${surveyPools}" th:if="${pool.foodType == 'veg'}" class="list-item">
                             <span class="list-name" th:text="${pool.employeeName}">Name</span>
                             <span class="list-badge veg">VEG</span>
@@ -273,10 +270,7 @@
                 <div>
                     <h4 style="margin-bottom:12px;color:#f97316">Non-Vegetarian (<span th:text="${surveyNonvegCount}">0</span>)</h4>
                     <div class="employee-list">
-                        <div class="list-header">
-                            <span>Employee Name</span>
-                            <span>Choice</span>
-                        </div>
+                        <div class="list-header"><span>Name</span><span>Choice</span></div>
                         <div th:each="pool : ${surveyPools}" th:if="${pool.foodType == 'nonveg'}" class="list-item">
                             <span class="list-name" th:text="${pool.employeeName}">Name</span>
                             <span class="list-badge nonveg">NON-VEG</span>
@@ -291,11 +285,11 @@
                 <div class="notify-buttons">
                     <button class="notify-btn" onclick="sendNotify('participate')">Remind to Vote</button>
                     <button class="notify-btn" onclick="sendNotify('lastcall')">Last Call to Vote</button>
-                    <button class="notify-btn primary" onclick="showCustomNotify('survey')">Custom Message</button>
+                    <button class="notify-btn primary" onclick="showCustomNotify()">Custom Message</button>
                 </div>
-                <div id="customNotifyBoxSurvey" class="hidden" style="margin-top:16px">
-                    <textarea id="customMessageSurvey" placeholder="Enter your message..." style="width:100%;padding:12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);min-height:80px;font-family:inherit;resize:vertical"></textarea>
-                    <button class="btn btn-primary btn-sm" onclick="sendCustomNotify('survey')" style="margin-top:12px">Send Message</button>
+                <div id="customNotifyBox" class="hidden" style="margin-top:16px">
+                    <textarea id="customMessage" placeholder="Enter your message..." style="width:100%;padding:12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);min-height:80px;font-family:inherit;resize:vertical"></textarea>
+                    <button class="btn btn-primary btn-sm" onclick="sendCustomNotify()" style="margin-top:12px">Send</button>
                 </div>
             </div>
         </div>
@@ -307,12 +301,11 @@
         <div th:if="${!isFoodCollectionDay}" class="section">
             <div class="pool-control">
                 <div class="pool-status" style="color:var(--text-muted)">No Food Collection Today</div>
-                <p style="color:var(--text-muted);margin:12px 0">There is no scheduled food for today. Start a survey in the Survey tab.</p>
+                <p style="color:var(--text-muted);margin:12px 0">There is no scheduled food for today.</p>
             </div>
         </div>
         
         <div th:if="${isFoodCollectionDay}">
-            <!-- Collection Stats -->
             <div class="section">
                 <div class="section-header">
                     <span class="section-title">Today's Food Collection</span>
@@ -350,30 +343,22 @@
                     <h4>Send Reminders</h4>
                     <div class="notify-buttons">
                         <button class="notify-btn" onclick="sendNotify('eat')">Food Has Arrived</button>
-                        <button class="notify-btn primary" onclick="showCustomNotify('collection')">Custom Message</button>
-                    </div>
-                    <div id="customNotifyBoxCollection" class="hidden" style="margin-top:16px">
-                        <textarea id="customMessageCollection" placeholder="Enter your message..." style="width:100%;padding:12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);min-height:80px;font-family:inherit;resize:vertical"></textarea>
-                        <button class="btn btn-primary btn-sm" onclick="sendCustomNotify('collection')" style="margin-top:12px">Send Message</button>
+                        <button class="notify-btn primary" onclick="showCustomNotify()">Custom Message</button>
                     </div>
                 </div>
             </div>
             
-            <!-- Collection Lists -->
             <div class="two-col">
                 <div class="section">
                     <div class="section-header">
                         <span class="section-title" style="color:var(--warning)">Collected (<span th:text="${collectionCollected}">0</span>)</span>
                     </div>
                     <div class="employee-list">
-                        <div class="list-header">
-                            <span>Employee Name</span>
-                            <span>Status</span>
-                        </div>
+                        <div class="list-header"><span>Name</span><span>Status</span></div>
                         <div th:each="scan : ${collectionScans}" class="list-item">
                             <span class="list-name" th:text="${scan.employeeName}">Name</span>
                             <span class="list-badge" th:classappend="${scan.didVote} ? 'collected' : 'no-vote'" 
-                                  th:text="${scan.didVote} ? 'Collected' : 'No Vote'">Status</span>
+                                  th:text="${scan.didVote} ? 'Voted' : 'No Vote'">Status</span>
                         </div>
                         <div th:if="${#lists.isEmpty(collectionScans)}" class="empty-state">No one has collected yet</div>
                     </div>
@@ -384,10 +369,7 @@
                         <span class="section-title" style="color:var(--text-muted)">Pending (<span th:text="${collectionTotalVoted - collectionCollected}">0</span>)</span>
                     </div>
                     <div class="employee-list">
-                        <div class="list-header">
-                            <span>Employee Name</span>
-                            <span>Choice</span>
-                        </div>
+                        <div class="list-header"><span>Name</span><span>Choice</span></div>
                         <th:block th:each="pool : ${collectionPools}">
                             <div th:unless="${#lists.contains(collectedEmployeeIds, pool.employeeId)}" class="list-item">
                                 <span class="list-name" th:text="${pool.employeeName}">Name</span>
@@ -402,11 +384,11 @@
         </div>
     </div>
     
-    <!-- ==================== REPORTS DASHBOARD ==================== -->
-    <div id="reportsDashboard" class="dashboard-section">
+    <!-- ==================== HISTORY / REPORTS ==================== -->
+    <div id="historyDashboard" class="dashboard-section">
         <div class="section">
             <div class="section-header">
-                <span class="section-title">Historical Reports</span>
+                <span class="section-title">Historical Data</span>
             </div>
             
             <div class="date-filter">
@@ -429,12 +411,16 @@
             <div th:if="${report != null && report.foodPoolDays > 0}">
                 <div class="stats-row">
                     <div class="stat-box">
-                        <div class="stat-value" style="color:var(--primary)" th:text="${report.foodPoolDays}">0</div>
+                        <div class="stat-value total" th:text="${report.foodPoolDays}">0</div>
                         <div class="stat-label">Active Days</div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-value total" th:text="${report.totalVoted}">0</div>
-                        <div class="stat-label">Total Votes</div>
+                        <div class="stat-value veg" th:text="${report.totalVeg}">0</div>
+                        <div class="stat-label">Veg Votes</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value nonveg" th:text="${report.totalNonveg}">0</div>
+                        <div class="stat-label">Non-Veg Votes</div>
                     </div>
                     <div class="stat-box">
                         <div class="stat-value collected" th:text="${report.totalCollected}">0</div>
@@ -448,6 +434,7 @@
                         <thead>
                             <tr>
                                 <th>Date</th>
+                                <th>Day</th>
                                 <th class="number">Veg</th>
                                 <th class="number">Non-Veg</th>
                                 <th class="number">Total Voted</th>
@@ -456,7 +443,8 @@
                         </thead>
                         <tbody>
                             <tr th:each="day : ${report.dailyData}">
-                                <td th:text="${day.dateDisplay}">Date</td>
+                                <td th:text="${day.date}">Date</td>
+                                <td th:text="${day.dateDisplay}">Day</td>
                                 <td class="number" th:text="${day.veg}">0</td>
                                 <td class="number" th:text="${day.nonveg}">0</td>
                                 <td class="number" th:text="${day.totalVoted}">0</td>
@@ -467,7 +455,7 @@
                 </div>
                 
                 <div style="display:flex;justify-content:flex-end;margin-top:16px">
-                    <button class="btn btn-success export-btn" onclick="exportReport()">
+                    <button class="btn btn-success export-btn" onclick="exportHistory()">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
                         </svg>
@@ -477,7 +465,7 @@
             </div>
             
             <div th:if="${report == null || report.foodPoolDays == 0}" class="empty-state">
-                <p>Select a date range and click "View Data" to see historical reports</p>
+                <p>No data for selected date range. Select dates and click "View Data".</p>
             </div>
         </div>
     </div>
@@ -503,10 +491,8 @@ function setRange(days) {
     const end = new Date();
     const start = new Date();
     start.setDate(end.getDate() - days + 1);
-    
     document.getElementById('startDate').value = formatDate(start);
     document.getElementById('endDate').value = formatDate(end);
-    
     document.querySelectorAll('.quick-btn').forEach(b => b.classList.remove('active'));
     event.target.classList.add('active');
 }
@@ -518,24 +504,20 @@ function formatDate(date) {
 function loadReport() {
     const startDate = document.getElementById('startDate').value;
     const endDate = document.getElementById('endDate').value;
-    
     if (!startDate || !endDate) {
         showMessage('Please select both start and end dates', false);
         return;
     }
-    
-    window.location.href = '/admin?startDate=' + startDate + '&endDate=' + endDate + '&tab=reports';
+    window.location.href = '/admin?startDate=' + startDate + '&endDate=' + endDate + '&tab=history';
 }
 
-function exportReport() {
+function exportHistory() {
     const startDate = document.getElementById('startDate').value;
     const endDate = document.getElementById('endDate').value;
-    
     if (!startDate || !endDate) {
         showMessage('Please select date range first', false);
         return;
     }
-    
     window.location.href = '/admin/reports/export?startDate=' + startDate + '&endDate=' + endDate;
 }
 
@@ -584,12 +566,12 @@ async function sendNotify(type) {
     }
 }
 
-function showCustomNotify(section) {
-    document.getElementById('customNotifyBox' + section.charAt(0).toUpperCase() + section.slice(1)).classList.toggle('hidden');
+function showCustomNotify() {
+    document.getElementById('customNotifyBox').classList.toggle('hidden');
 }
 
-async function sendCustomNotify(section) {
-    const message = document.getElementById('customMessage' + section.charAt(0).toUpperCase() + section.slice(1)).value.trim();
+async function sendCustomNotify() {
+    const message = document.getElementById('customMessage').value.trim();
     if (!message) {
         showMessage('Please enter a message', false);
         return;
@@ -604,8 +586,8 @@ async function sendCustomNotify(section) {
         const data = await res.json();
         showMessage(data.message || data.error, data.success);
         if (data.success) {
-            document.getElementById('customMessage' + section.charAt(0).toUpperCase() + section.slice(1)).value = '';
-            document.getElementById('customNotifyBox' + section.charAt(0).toUpperCase() + section.slice(1)).classList.add('hidden');
+            document.getElementById('customMessage').value = '';
+            document.getElementById('customNotifyBox').classList.add('hidden');
         }
     } catch (e) {
         showMessage('Failed to send notification', false);
@@ -620,13 +602,13 @@ function exportCollection() {
     window.location.href = '/admin/export/collection';
 }
 
-// Check URL param to open specific tab
+// Check URL params to show correct tab
 const urlParams = new URLSearchParams(window.location.search);
-if (urlParams.get('tab') === 'reports') {
+if (urlParams.get('tab') === 'history') {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.dashboard-section').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('.tab')[2].classList.add('active');
-    document.getElementById('reportsDashboard').classList.add('active');
+    document.getElementById('historyDashboard').classList.add('active');
 }
 
 // Auto-refresh when survey is active
