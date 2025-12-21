@@ -278,33 +278,35 @@
                 <div class="section">
                     <div class="section-header"><span class="section-title" style="color:var(--warning)">Collected (<span th:text="${collectionCollected}">0</span>)</span></div>
                     <div class="filter-row">
-                        <input type="text" placeholder="Search..." onkeyup="filterList(this, 'collectedList')">
+                        <input type="text" placeholder="Search..." onkeyup="filterCollectedList(this)">
                     </div>
-                    <div class="employee-list" id="collectedList" style="max-height:300px;overflow-y:auto">
+                    <div class="employee-list" id="collectedList" style="max-height:350px;overflow-y:auto">
                         <div class="list-header"><span>Name</span><span>Status</span></div>
-                        <div th:each="scan : ${collectionScans}" class="list-item" th:data-name="${scan.employeeName}">
+                        <div th:each="scan : ${collectionScans}" class="list-item collected-item" th:data-name="${scan.employeeName}">
                             <span class="list-name" th:text="${scan.employeeName}">Name</span>
                             <span class="list-badge" th:classappend="${scan.didVote} ? 'collected' : 'no-vote'" th:text="${scan.didVote} ? 'Voted' : 'No Vote'">Status</span>
                         </div>
                         <div th:if="${#lists.isEmpty(collectionScans)}" class="empty-state">No collections yet</div>
                     </div>
+                    <div class="pagination" id="collectedPagination"></div>
                 </div>
                 
                 <div class="section">
                     <div class="section-header"><span class="section-title" style="color:var(--text-muted)">Pending (<span th:text="${collectionTotalVoted - collectionCollected}">0</span>)</span></div>
                     <div class="filter-row">
-                        <input type="text" placeholder="Search..." onkeyup="filterList(this, 'pendingList')">
+                        <input type="text" placeholder="Search..." onkeyup="filterPendingList(this)">
                     </div>
-                    <div class="employee-list" id="pendingList" style="max-height:300px;overflow-y:auto">
+                    <div class="employee-list" id="pendingList" style="max-height:350px;overflow-y:auto">
                         <div class="list-header"><span>Name</span><span>Choice</span></div>
                         <th:block th:each="pool : ${collectionPools}">
-                            <div th:unless="${#lists.contains(collectedEmployeeIds, pool.employeeId)}" class="list-item" th:data-name="${pool.employeeName}">
+                            <div th:unless="${#lists.contains(collectedEmployeeIds, pool.employeeId)}" class="list-item pending-item" th:data-name="${pool.employeeName}">
                                 <span class="list-name" th:text="${pool.employeeName}">Name</span>
                                 <span class="list-badge" th:classappend="${pool.foodType == 'veg'} ? 'veg' : 'nonveg'" th:text="${pool.foodType == 'veg'} ? 'VEG' : 'NON-VEG'">Choice</span>
                             </div>
                         </th:block>
                         <div th:if="${collectionTotalVoted - collectionCollected <= 0}" class="empty-state">All collected</div>
                     </div>
+                    <div class="pagination" id="pendingPagination"></div>
                 </div>
             </div>
         </div>
@@ -379,9 +381,11 @@
 </div>
 
 <script th:inline="javascript">
-const ITEMS_PER_PAGE = 15;
+const ITEMS_PER_PAGE = 10;
 let surveyPage = 1;
 let dailyPage = 1;
+let collectedPage = 1;
+let pendingPage = 1;
 
 function showTab(tab) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -395,8 +399,40 @@ function filterList(input, listId) {
     const items = document.getElementById(listId).querySelectorAll('.list-item');
     items.forEach(item => {
         const name = item.getAttribute('data-name') || '';
-        item.style.display = name.toLowerCase().includes(filter) ? '' : 'none';
+        if (name.toLowerCase().includes(filter)) {
+            item.classList.remove('hidden');
+        } else {
+            item.classList.add('hidden');
+        }
     });
+}
+
+function filterCollectedList(input) {
+    const filter = input.value.toLowerCase();
+    document.querySelectorAll('.collected-item').forEach(item => {
+        const name = item.getAttribute('data-name') || '';
+        if (name.toLowerCase().includes(filter)) {
+            item.classList.remove('hidden');
+        } else {
+            item.classList.add('hidden');
+        }
+    });
+    collectedPage = 1;
+    paginateList('collectedList', 'collectedPagination', 'collected-item');
+}
+
+function filterPendingList(input) {
+    const filter = input.value.toLowerCase();
+    document.querySelectorAll('.pending-item').forEach(item => {
+        const name = item.getAttribute('data-name') || '';
+        if (name.toLowerCase().includes(filter)) {
+            item.classList.remove('hidden');
+        } else {
+            item.classList.add('hidden');
+        }
+    });
+    pendingPage = 1;
+    paginateList('pendingList', 'pendingPagination', 'pending-item');
 }
 
 function filterSurveyList() {
@@ -415,10 +451,26 @@ function filterSurveyList() {
     paginateList('surveyList', 'surveyPagination', 'survey-item');
 }
 
+function getPageVar(listId) {
+    if (listId === 'surveyList') return surveyPage;
+    if (listId === 'dailyTable') return dailyPage;
+    if (listId === 'collectedList') return collectedPage;
+    if (listId === 'pendingList') return pendingPage;
+    return 1;
+}
+
+function setPageVar(listId, val) {
+    if (listId === 'surveyList') surveyPage = val;
+    else if (listId === 'dailyTable') dailyPage = val;
+    else if (listId === 'collectedList') collectedPage = val;
+    else if (listId === 'pendingList') pendingPage = val;
+}
+
 function paginateList(listId, paginationId, itemClass) {
     const items = Array.from(document.querySelectorAll('.' + itemClass + ':not(.hidden)'));
     const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
-    const currentPage = listId === 'surveyList' ? surveyPage : 1;
+    let currentPage = getPageVar(listId);
+    if (currentPage > totalPages) { currentPage = 1; setPageVar(listId, 1); }
     
     items.forEach((item, i) => {
         const page = Math.floor(i / ITEMS_PER_PAGE) + 1;
@@ -426,21 +478,54 @@ function paginateList(listId, paginationId, itemClass) {
     });
     
     const pagination = document.getElementById(paginationId);
+    if (!pagination) return;
     if (totalPages <= 1) {
-        pagination.innerHTML = '';
+        pagination.innerHTML = items.length > 0 ? `<span>Showing ${items.length} items</span>` : '';
         return;
     }
     
     pagination.innerHTML = `
         <button onclick="changePage('${listId}', '${paginationId}', '${itemClass}', -1)" ${currentPage === 1 ? 'disabled' : ''}>Prev</button>
-        <span>Page ${currentPage} of ${totalPages}</span>
+        <span>Page ${currentPage} of ${totalPages} (${items.length} items)</span>
         <button onclick="changePage('${listId}', '${paginationId}', '${itemClass}', 1)" ${currentPage === totalPages ? 'disabled' : ''}>Next</button>
     `;
 }
 
 function changePage(listId, paginationId, itemClass, delta) {
-    if (listId === 'surveyList') surveyPage += delta;
+    let current = getPageVar(listId);
+    setPageVar(listId, current + delta);
     paginateList(listId, paginationId, itemClass);
+}
+
+function paginateTable(tableId, paginationId) {
+    const rows = Array.from(document.querySelectorAll('#' + tableId + ' tbody tr'));
+    const totalPages = Math.ceil(rows.length / ITEMS_PER_PAGE);
+    let currentPage = getPageVar(tableId);
+    if (currentPage > totalPages) { currentPage = 1; setPageVar(tableId, 1); }
+    
+    rows.forEach((row, i) => {
+        const page = Math.floor(i / ITEMS_PER_PAGE) + 1;
+        row.style.display = page === currentPage ? '' : 'none';
+    });
+    
+    const pagination = document.getElementById(paginationId);
+    if (!pagination) return;
+    if (totalPages <= 1) {
+        pagination.innerHTML = rows.length > 0 ? `<span>Showing ${rows.length} days</span>` : '';
+        return;
+    }
+    
+    pagination.innerHTML = `
+        <button onclick="changeTablePage('${tableId}', '${paginationId}', -1)" ${currentPage === 1 ? 'disabled' : ''}>Prev</button>
+        <span>Page ${currentPage} of ${totalPages} (${rows.length} days)</span>
+        <button onclick="changeTablePage('${tableId}', '${paginationId}', 1)" ${currentPage === totalPages ? 'disabled' : ''}>Next</button>
+    `;
+}
+
+function changeTablePage(tableId, paginationId, delta) {
+    let current = getPageVar(tableId);
+    setPageVar(tableId, current + delta);
+    paginateTable(tableId, paginationId);
 }
 
 async function showDayDetails(row) {
@@ -583,8 +668,11 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('historyDashboard').classList.add('active');
     }
     
-    // Init pagination
+    // Init pagination for all lists
     paginateList('surveyList', 'surveyPagination', 'survey-item');
+    paginateList('collectedList', 'collectedPagination', 'collected-item');
+    paginateList('pendingList', 'pendingPagination', 'pending-item');
+    paginateTable('dailyTable', 'dailyPagination');
 });
 
 // Auto-refresh
