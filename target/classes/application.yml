@@ -1,0 +1,47 @@
+server:
+  port: 8888
+
+spring:
+  application:
+    name: food-pool-management
+  
+  data:
+    mongodb:
+      uri: mongodb+srv://tharun_db_user:XplRhL6HZNdfwRol@encipherfoodmanagement.lpwcfvq.mongodb.net/food_management?retryWrites=true&w=majority
+      database: food_management
+  
+  security:
+    oauth2:
+      client:
+        registration:
+          zoho:
+            client-id: ${ZOHO_CLIENT_ID:1000.V7Y8R94HK9C4BIC8PW9PL0XWLJTTCP}
+            client-secret: ${ZOHO_CLIENT_SECRET:22aa87c8c7ec7967871f901a903e6d03588a80cf6f}
+            scope: AaaServer.profile.READ,email
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            client-name: Zoho
+        provider:
+          zoho:
+            authorization-uri: https://accounts.zoho.in/oauth/v2/auth
+            token-uri: https://accounts.zoho.in/oauth/v2/token
+            user-info-uri: https://accounts.zoho.in/oauth/user/info
+            user-name-attribute: Email
+  
+  thymeleaf:
+    cache: false
+    prefix: classpath:/templates/
+    suffix: .html
+
+# App configuration
+app:
+  admin-emails: admin@encipherhealth.com,hr@encipherhealth.com
+  base-url: http://food.management.encipherhealth.com
+  cliq:
+    # Zoho Cliq Bot Incoming Webhook
+    webhook-url: https://cliq.zoho.in/api/v2/bots/encipherfoodbot/incoming
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+    com.encipher: DEBUG

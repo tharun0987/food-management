@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Collect Food | Encipher</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root{
+            --primary:#0891b2;
+            --primary-dark:#0e7490;
+            --secondary:#0d9488;
+            --accent:#06b6d4;
+            --success:#10b981;
+            --warning:#f59e0b;
+            --danger:#ef4444;
+            --bg-dark:#0c1421;
+            --bg-card:#111827;
+            --bg-elevated:#1f2937;
+            --text:#f9fafb;
+            --text-muted:#9ca3af;
+            --border:#374151;
+        }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Inter',sans-serif;background:var(--bg-dark);min-height:100vh;color:var(--text)}
+        .header{background:linear-gradient(135deg,var(--primary-dark),var(--secondary));padding:16px 20px;display:flex;align-items:center;gap:16px}
+        .back{color:#fff;text-decoration:none;font-size:1.25rem;opacity:0.8}
+        .back:hover{opacity:1}
+        .title{font-size:1rem;font-weight:600}
+        .container{max-width:500px;margin:0 auto;padding:20px}
+        
+        .banner{background:linear-gradient(135deg,var(--primary),var(--secondary));padding:16px 20px;border-radius:12px;text-align:center;margin-bottom:20px}
+        .banner .label{font-size:0.75rem;color:rgba(255,255,255,0.7);margin-bottom:4px}
+        .banner .date{font-size:1.1rem;font-weight:700}
+        
+        .camera-box{background:#000;border-radius:12px;overflow:hidden;aspect-ratio:1;position:relative;margin:20px 0}
+        video{width:100%;height:100%;object-fit:cover}
+        .overlay{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+        .scan-frame{width:70%;height:70%;border:3px solid var(--success);border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,0.5);animation:pulse 2s infinite}
+        @keyframes pulse{0%,100%{border-color:var(--success)}50%{border-color:var(--accent)}}
+        
+        .status{padding:20px;border-radius:12px;text-align:center;margin:20px 0;border:1px solid var(--border)}
+        .status.info{background:rgba(6,182,212,0.1);border-color:var(--accent)}
+        .status.success{background:rgba(16,185,129,0.1);border-color:var(--success)}
+        .status.error{background:rgba(239,68,68,0.1);border-color:var(--danger)}
+        .status.warning{background:rgba(245,158,11,0.1);border-color:var(--warning)}
+        .status h3{font-size:1rem;margin-bottom:8px}
+        .status p{color:var(--text-muted);font-size:0.9rem}
+        
+        .btn{display:block;width:100%;padding:14px;border:none;border-radius:10px;font-size:0.95rem;font-weight:600;cursor:pointer;margin:12px 0;text-decoration:none;text-align:center;transition:all 0.2s}
+        .btn-primary{background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff}
+        .btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(8,145,178,0.3)}
+        .btn-secondary{background:var(--bg-elevated);color:var(--text);border:1px solid var(--border)}
+        .btn-secondary:hover{border-color:var(--primary)}
+        
+        canvas{display:none}
+        .hidden{display:none}
+        
+        .camera-error{padding:40px 20px;text-align:center;color:var(--danger)}
+        .camera-error p{margin:12px 0;color:var(--text-muted);font-size:0.9rem}
+        
+        .loading{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text-muted)}
+        .loading .spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--success);border-radius:50%;animation:spin 1s linear infinite}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        
+        .permission-guide{background:var(--bg-elevated);padding:20px;border-radius:10px;margin:16px 0;border:1px solid var(--border)}
+        .permission-guide h4{margin-bottom:12px;color:var(--warning);font-size:0.9rem}
+        .permission-guide ul{margin-left:20px;font-size:0.8rem;line-height:1.8;color:var(--text-muted)}
+        
+        .vote-status{font-size:0.8rem;margin-top:12px;padding:8px 16px;border-radius:8px;display:inline-block}
+        .vote-status.voted{background:rgba(16,185,129,0.15);color:var(--success)}
+        .vote-status.not-voted{background:rgba(245,158,11,0.15);color:var(--warning)}
+    </style>
+</head>
+<body>
+<div class="header">
+    <a href="/home" class="back">&#8592;</a>
+    <span class="title">Collect Food</span>
+</div>
+
+<div class="container">
+    <!-- Date Banner -->
+    <div class="banner">
+        <div class="label">Today's Date</div>
+        <div class="date" th:text="${todayFormatted}">Today</div>
+    </div>
+    
+    <!-- Not a Food Collection Day -->
+    <div th:if="${!isFoodCollectionDay}" class="status warning">
+        <h3>No Food Collection Today</h3>
+        <p>Today is not a scheduled food collection day.</p>
+        <p style="margin-top:12px;font-size:0.8rem">Food can only be collected on the scheduled food date.</p>
+        <a href="/pool" class="btn btn-primary" style="margin-top:16px">Check Food Survey</a>
+    </div>
+    
+    <!-- Already Collected -->
+    <div th:if="${isFoodCollectionDay && hasCollected}" class="status success">
+        <h3>Food Collected</h3>
+        <p>You've already collected your meal today.</p>
+        <div th:if="${hasPooled}" class="vote-status voted">Voted: <span th:text="${pooledType}" style="text-transform:uppercase"></span></div>
+        <a href="/home" class="btn btn-secondary" style="margin-top:16px">Back to Home</a>
+    </div>
+    
+    <!-- Ready to Scan (voted or not) -->
+    <div th:if="${isFoodCollectionDay && !hasCollected}" id="scanSection">
+        <div th:if="${hasPooled}" class="status info">
+            <p>Ready to collect: <strong th:text="${pooledType}" style="text-transform:uppercase"></strong></p>
+            <div class="vote-status voted">You voted for this meal</div>
+        </div>
+        <div th:unless="${hasPooled}" class="status warning">
+            <p>You did not vote for today's food</p>
+            <div class="vote-status not-voted">Collection will be tracked as "Did not vote"</div>
+        </div>
+        
+        <div class="camera-box" id="cameraBox">
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p style="margin-top:16px">Initializing camera...</p>
+            </div>
+            <video id="video" autoplay playsinline muted style="display:none"></video>
+            <div class="overlay" id="overlay" style="display:none"><div class="scan-frame"></div></div>
+        </div>
+        
+        <div id="cameraError" class="camera-error hidden">
+            <h3>Camera Access Required</h3>
+            <p id="errorMessage">Unable to access camera</p>
+            <div class="permission-guide">
+                <h4>How to enable camera:</h4>
+                <ul>
+                    <li><strong>iOS Safari:</strong> Settings - Safari - Camera - Allow</li>
+                    <li><strong>Android Chrome:</strong> Tap lock icon in address bar - Site settings - Camera - Allow</li>
+                    <li><strong>Desktop:</strong> Click camera icon in address bar - Allow</li>
+                </ul>
+            </div>
+            <button onclick="retryCamera()" class="btn btn-primary">Try Again</button>
+        </div>
+        
+        <button onclick="startCamera()" class="btn btn-primary" id="startBtn">Start Camera</button>
+        
+        <div id="result" class="status success hidden">
+            <h3>Food Collected</h3>
+            <p id="resultMsg"></p>
+            <a href="/home" class="btn btn-secondary" style="margin-top:16px">Back to Home</a>
+        </div>
+    </div>
+    
+    <canvas id="canvas"></canvas>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas ? canvas.getContext('2d', {willReadFrequently: true}) : null;
+    const loading = document.getElementById('loading');
+    const overlay = document.getElementById('overlay');
+    const cameraBox = document.getElementById('cameraBox');
+    const cameraError = document.getElementById('cameraError');
+    const startBtn = document.getElementById('startBtn');
+    let scanning = false;
+    let stream = null;
+    
+    async function startCamera() {
+        if (startBtn) startBtn.style.display = 'none';
+        if (loading) loading.style.display = 'flex';
+        if (cameraError) cameraError.classList.add('hidden');
+        
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            showCameraError('Camera not supported on this browser. Please use Chrome or Safari.');
+            return;
+        }
+        
+        try {
+            if (stream) {
+                stream.getTracks().forEach(t => t.stop());
+            }
+            
+            const constraints = [
+                { video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false },
+                { video: { facingMode: 'environment' }, audio: false },
+                { video: { facingMode: 'user' }, audio: false },
+                { video: true, audio: false }
+            ];
+            
+            let lastError = null;
+            for (const constraint of constraints) {
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia(constraint);
+                    break;
+                } catch (e) {
+                    lastError = e;
+                }
+            }
+            
+            if (!stream) {
+                throw lastError || new Error('Could not access camera');
+            }
+            
+            video.srcObject = stream;
+            
+            await new Promise((resolve, reject) => {
+                video.onloadedmetadata = () => {
+                    video.play().then(resolve).catch(reject);
+                };
+                video.onerror = reject;
+                setTimeout(() => reject(new Error('Video load timeout')), 10000);
+            });
+            
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+            
+            if (loading) loading.style.display = 'none';
+            video.style.display = 'block';
+            if (overlay) overlay.style.display = 'flex';
+            
+            scanning = true;
+            scan();
+            
+        } catch (e) {
+            let message = 'Unable to access camera.';
+            if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
+                message = 'Camera permission denied. Please allow camera access and try again.';
+            } else if (e.name === 'NotFoundError' || e.name === 'DevicesNotFoundError') {
+                message = 'No camera found on this device.';
+            } else if (e.name === 'NotReadableError' || e.name === 'TrackStartError') {
+                message = 'Camera is in use by another app. Please close other apps and try again.';
+            } else if (e.name === 'SecurityError') {
+                message = 'Camera access blocked. This page needs to be served over HTTPS.';
+            }
+            showCameraError(message);
+        }
+    }
+    
+    function showCameraError(message) {
+        if (loading) loading.style.display = 'none';
+        video.style.display = 'none';
+        if (overlay) overlay.style.display = 'none';
+        if (cameraError) {
+            cameraError.classList.remove('hidden');
+            document.getElementById('errorMessage').textContent = message;
+        }
+    }
+    
+    function retryCamera() {
+        startCamera();
+    }
+    
+    function scan() {
+        if (!scanning) return;
+        
+        try {
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                    inversionAttempts: 'dontInvert'
+                });
+                
+                if (code && code.data) {
+                    scanning = false;
+                    
+                    if (stream) {
+                        stream.getTracks().forEach(t => t.stop());
+                    }
+                    
+                    if (cameraBox) cameraBox.style.borderColor = 'var(--success)';
+                    
+                    verifyScan(code.data);
+                    return;
+                }
+            }
+        } catch (e) {
+            console.error('Scan error:', e);
+        }
+        
+        requestAnimationFrame(scan);
+    }
+    
+    async function verifyScan(qrData) {
+        if (cameraBox) {
+            cameraBox.innerHTML = '<div class="loading"><div class="spinner"></div><p style="margin-top:16px">Verifying...</p></div>';
+        }
+        
+        try {
+            const res = await fetch('/api/scan', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({qrData: qrData})
+            });
+            
+            const data = await res.json();
+            
+            if (data.success) {
+                if (cameraBox) cameraBox.style.display = 'none';
+                document.getElementById('resultMsg').textContent = data.message;
+                document.getElementById('result').classList.remove('hidden');
+            } else {
+                if (cameraBox) {
+                    cameraBox.innerHTML = '<div class="camera-error"><h3>Error</h3><p>' + data.error + '</p></div>';
+                }
+                setTimeout(() => location.reload(), 2000);
+            }
+        } catch (e) {
+            if (cameraBox) {
+                cameraBox.innerHTML = '<div class="camera-error"><h3>Network Error</h3><p>Please check your connection and try again.</p></div>';
+            }
+            setTimeout(() => location.reload(), 2000);
+        }
+    }
+    
+    if (document.getElementById('scanSection')) {
+        window.addEventListener('load', () => {
+            setTimeout(startCamera, 500);
+        });
+    }
+</script>
+</body>
+</html>

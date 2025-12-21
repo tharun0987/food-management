@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Food Pool | Encipher</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root{
+            --primary:#0891b2;
+            --primary-dark:#0e7490;
+            --secondary:#0d9488;
+            --accent:#06b6d4;
+            --success:#10b981;
+            --warning:#f59e0b;
+            --danger:#ef4444;
+            --bg-dark:#0c1421;
+            --bg-card:#111827;
+            --bg-elevated:#1f2937;
+            --text:#f9fafb;
+            --text-muted:#9ca3af;
+            --border:#374151;
+        }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Inter',sans-serif;background:var(--bg-dark);min-height:100vh;display:flex;flex-direction:column}
+        .header{background:linear-gradient(135deg,var(--primary-dark),var(--secondary));padding:20px;text-align:center}
+        .logo{font-size:1.4rem;font-weight:700;color:#fff;letter-spacing:-0.5px}
+        .logo span{color:var(--accent)}
+        .container{flex:1;padding:20px;max-width:500px;margin:0 auto;width:100%}
+        .welcome{color:var(--text);margin:24px 0}
+        .welcome h2{font-size:1.2rem;font-weight:600}
+        .welcome p{font-size:0.85rem;color:var(--text-muted);margin-top:6px}
+        
+        .banner{background:linear-gradient(135deg,var(--primary),var(--secondary));padding:20px;border-radius:12px;text-align:center;margin:20px 0}
+        .banner .label{font-size:0.75rem;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px}
+        .banner .value{font-size:1.2rem;font-weight:700;color:#fff}
+        .banner .status{font-size:0.8rem;margin-top:10px;padding:6px 14px;border-radius:16px;display:inline-block;font-weight:500}
+        .banner .status.survey{background:rgba(255,255,255,0.2);color:#fff}
+        .banner .status.collection{background:rgba(16,185,129,0.3);color:#a7f3d0}
+        
+        .status-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:16px;margin:16px 0}
+        .status-card h4{font-size:0.75rem;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px}
+        .status-card .value{font-size:1rem;font-weight:600;color:var(--accent)}
+        .status-card .hint{font-size:0.75rem;color:var(--success);margin-top:4px}
+        
+        .menu-grid{display:flex;flex-direction:column;gap:12px;margin-top:20px}
+        .menu-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;display:flex;align-items:center;gap:16px;text-decoration:none;color:var(--text);transition:all 0.2s}
+        .menu-card:hover{border-color:var(--primary);transform:translateX(4px)}
+        .menu-card.active{border-color:var(--success);background:rgba(16,185,129,0.05)}
+        .menu-card.disabled{opacity:0.4;pointer-events:none}
+        .menu-card.done{opacity:0.7;border-color:var(--accent)}
+        .menu-icon{width:48px;height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:700}
+        .menu-icon.vote{background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff}
+        .menu-icon.scan{background:linear-gradient(135deg,var(--accent),var(--success));color:#fff}
+        .menu-info{flex:1}
+        .menu-info h3{font-size:0.95rem;font-weight:600;margin-bottom:4px}
+        .menu-info p{font-size:0.8rem;color:var(--text-muted)}
+        .menu-badge{padding:6px 12px;border-radius:16px;font-size:0.7rem;font-weight:600}
+        .menu-badge.open{background:rgba(16,185,129,0.15);color:var(--success)}
+        .menu-badge.closed{background:rgba(245,158,11,0.15);color:var(--warning)}
+        .menu-badge.voted{background:rgba(6,182,212,0.15);color:var(--accent)}
+        .menu-badge.done{background:rgba(16,185,129,0.15);color:var(--success)}
+        .menu-badge.ready{background:rgba(6,182,212,0.15);color:var(--accent)}
+        .menu-badge.no-vote{background:rgba(245,158,11,0.15);color:var(--warning)}
+        .menu-badge.not-today{background:rgba(239,68,68,0.15);color:var(--danger)}
+        
+        .admin-link{display:block;margin-top:20px;padding:16px;background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:12px;text-align:center;color:#fff;text-decoration:none;font-weight:600;transition:all 0.2s}
+        .admin-link:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(8,145,178,0.3)}
+        
+        .footer{text-align:center;padding:20px;color:var(--text-muted);font-size:0.7rem}
+    </style>
+</head>
+<body>
+<div class="header">
+    <div class="logo">Encipher<span>Food</span></div>
+</div>
+
+<div class="container">
+    <div class="welcome">
+        <h2>Hello, <span th:text="${employeeName}">User</span></h2>
+        <p th:text="${email}">email@example.com</p>
+    </div>
+    
+    <!-- Survey Open Banner -->
+    <div th:if="${poolOpen}" class="banner">
+        <div class="label">Survey Open - Vote for</div>
+        <div class="value" th:text="${foodDateFormatted}">Tomorrow</div>
+        <div class="status survey">Survey Active</div>
+    </div>
+    
+    <!-- Collection Day Banner -->
+    <div th:if="${!poolOpen && isFoodCollectionDay}" class="banner">
+        <div class="label">Food Collection Day</div>
+        <div class="value">Today</div>
+        <div class="status collection">Collect Your Food</div>
+    </div>
+    
+    <!-- User's Vote Status -->
+    <div th:if="${hasPooled}" class="status-card">
+        <h4>Your Vote for <span th:text="${foodDateFormatted}">Food Date</span></h4>
+        <div class="value">
+            <span th:if="${pooledType == 'veg'}">Vegetarian</span>
+            <span th:if="${pooledType == 'nonveg'}">Non-Veg</span>
+        </div>
+        <div th:if="${poolOpen}" class="hint">You can change while survey is open</div>
+    </div>
+    
+    <div class="menu-grid">
+        <!-- Vote for Food -->
+        <a th:href="@{/pool}" class="menu-card"
+           th:classappend="${!foodAvailable} ? 'disabled' : (${hasPooled && !poolOpen} ? 'done' : (${poolOpen} ? 'active' : ''))">
+            <div class="menu-icon vote">V</div>
+            <div class="menu-info">
+                <h3>Register for Food</h3>
+                <p th:if="${poolOpen}">Vote for <span th:text="${foodDateFormatted}">tomorrow's</span> food</p>
+                <p th:if="${!poolOpen && foodAvailable}">Survey not started yet</p>
+                <p th:if="${!foodAvailable}">No survey available today</p>
+            </div>
+            <span th:if="${poolOpen && !hasPooled}" class="menu-badge open">OPEN</span>
+            <span th:if="${poolOpen && hasPooled}" class="menu-badge voted">VOTED</span>
+            <span th:if="${!poolOpen && foodAvailable}" class="menu-badge closed">CLOSED</span>
+        </a>
+        
+        <!-- Scan to Collect -->
+        <a th:href="@{/scan}" class="menu-card"
+           th:classappend="${hasCollected} ? 'done' : (${canCollectToday} ? 'active' : '')">
+            <div class="menu-icon scan">S</div>
+            <div class="menu-info">
+                <h3>Scan to Collect Food</h3>
+                <p th:if="${isFoodCollectionDay && !hasCollected}">Scan QR to collect your meal</p>
+                <p th:if="${isFoodCollectionDay && hasCollected}">Food collected today</p>
+                <p th:if="${!isFoodCollectionDay}">No food collection today</p>
+            </div>
+            <span th:if="${hasCollected}" class="menu-badge done">DONE</span>
+            <span th:if="${isFoodCollectionDay && !hasCollected && hasPoolForToday}" class="menu-badge ready">READY</span>
+            <span th:if="${isFoodCollectionDay && !hasCollected && !hasPoolForToday}" class="menu-badge no-vote">NO VOTE</span>
+            <span th:if="${!isFoodCollectionDay}" class="menu-badge not-today">NOT TODAY</span>
+        </a>
+        
+        <!-- Admin Link -->
+        <a th:if="${isAdmin}" href="/admin" class="admin-link">
+            Admin Dashboard
+        </a>
+    </div>
+</div>
+
+<div class="footer">
+    Encipher Food Pool Management
+</div>
+</body>
+</html>

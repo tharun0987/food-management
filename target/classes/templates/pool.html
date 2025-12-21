@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Food Registration | Encipher</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root{
+            --primary:#0891b2;
+            --primary-dark:#0e7490;
+            --secondary:#0d9488;
+            --accent:#06b6d4;
+            --success:#10b981;
+            --warning:#f59e0b;
+            --danger:#ef4444;
+            --bg-dark:#0c1421;
+            --bg-card:#111827;
+            --bg-elevated:#1f2937;
+            --text:#f9fafb;
+            --text-muted:#9ca3af;
+            --border:#374151;
+        }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Inter',sans-serif;background:var(--bg-dark);min-height:100vh;color:var(--text)}
+        .header{background:linear-gradient(135deg,var(--primary-dark),var(--secondary));padding:16px 20px;display:flex;align-items:center;gap:16px}
+        .back{color:#fff;text-decoration:none;font-size:1.25rem;opacity:0.8}
+        .back:hover{opacity:1}
+        .title{font-size:1rem;font-weight:600}
+        .container{max-width:500px;margin:0 auto;padding:20px}
+        h2{text-align:center;margin:20px 0;font-size:1.1rem;font-weight:600}
+        
+        .banner{background:linear-gradient(135deg,var(--primary),var(--secondary));padding:16px 20px;border-radius:12px;text-align:center;margin-bottom:20px}
+        .banner .label{font-size:0.75rem;color:rgba(255,255,255,0.7);margin-bottom:4px}
+        .banner .date{font-size:1.1rem;font-weight:700}
+        
+        .status-card{border-radius:12px;padding:24px;text-align:center;margin:20px 0;border:1px solid var(--border)}
+        .status-card.closed{background:rgba(245,158,11,0.1);border-color:var(--warning)}
+        .status-card.unavailable{background:rgba(239,68,68,0.1);border-color:var(--danger)}
+        .status-card.success{background:rgba(16,185,129,0.1);border-color:var(--success)}
+        .status-card.changeable{background:rgba(6,182,212,0.1);border-color:var(--accent)}
+        .status-icon{font-size:2.5rem;margin-bottom:12px}
+        .status-title{font-size:1.1rem;font-weight:600;margin-bottom:8px}
+        .status-desc{color:var(--text-muted);font-size:0.9rem}
+        .status-type{display:inline-block;padding:8px 20px;border-radius:20px;font-size:0.9rem;font-weight:600;margin-top:16px}
+        .status-type.veg{background:rgba(16,185,129,0.2);color:var(--success)}
+        .status-type.nonveg{background:rgba(249,115,22,0.2);color:#f97316}
+        
+        .food-options{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:24px 0}
+        .food-card{background:var(--bg-card);border:2px solid var(--border);border-radius:16px;padding:24px 16px;text-align:center;cursor:pointer;transition:all 0.2s}
+        .food-card:hover:not(.disabled){border-color:var(--text-muted);transform:scale(1.02)}
+        .food-card.selected{border-color:var(--success);background:rgba(16,185,129,0.05)}
+        .food-card.disabled{opacity:0.4;cursor:not-allowed}
+        .food-icon{font-size:2.5rem;margin-bottom:10px}
+        .food-label{font-size:1rem;font-weight:600;margin-bottom:6px}
+        .food-status{font-size:0.75rem;font-weight:500}
+        .food-status.available{color:var(--success)}
+        .food-status.unavailable{color:var(--danger)}
+        .food-dishes{font-size:0.75rem;color:var(--text-muted);line-height:1.5;margin-top:8px}
+        
+        .submit-btn{width:100%;padding:16px;background:linear-gradient(135deg,var(--primary),var(--secondary));border:none;border-radius:10px;color:#fff;font-size:1rem;font-weight:600;cursor:pointer;transition:all 0.2s}
+        .submit-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 8px 20px rgba(8,145,178,0.3)}
+        .submit-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+        .submit-btn.change{background:linear-gradient(135deg,var(--accent),var(--success))}
+        
+        .message{padding:14px;border-radius:8px;margin:16px 0;text-align:center}
+        .message.success{background:rgba(16,185,129,0.15);color:var(--success)}
+        .message.error{background:rgba(239,68,68,0.15);color:var(--danger)}
+        .hidden{display:none}
+        
+        .back-link{display:block;text-align:center;margin-top:20px;color:var(--text-muted);text-decoration:none;font-size:0.9rem}
+        .back-link:hover{color:var(--text)}
+        
+        .info-text{text-align:center;color:var(--text-muted);font-size:0.85rem;margin:16px 0;padding:16px;background:var(--bg-card);border-radius:10px;border:1px solid var(--border)}
+        .change-hint{background:rgba(6,182,212,0.1);color:var(--accent);padding:12px 16px;border-radius:8px;margin:16px 0;text-align:center;font-size:0.85rem}
+    </style>
+</head>
+<body>
+<div class="header">
+    <a href="/home" class="back">&#8592;</a>
+    <span class="title">Food Registration</span>
+</div>
+
+<div class="container">
+    <!-- Food Date Banner -->
+    <div th:if="${menu.poolOpen}" class="banner">
+        <div class="label">Food will be served on</div>
+        <div class="date" th:text="${foodDateFormatted}">Tomorrow</div>
+    </div>
+    
+    <!-- Already Voted but CAN CHANGE (survey still open) -->
+    <div th:if="${alreadyPooled && menu.poolOpen}">
+        <div class="status-card changeable">
+            <div class="status-icon">&#10003;</div>
+            <div class="status-title">Currently Registered</div>
+            <div class="status-desc">
+                You've registered for food on <strong th:text="${foodDateFormatted}">the food date</strong>.
+            </div>
+            <div class="status-type" th:classappend="${pooledType}">
+                <span th:if="${pooledType == 'veg'}">Vegetarian</span>
+                <span th:if="${pooledType == 'nonveg'}">Non-Veg</span>
+            </div>
+        </div>
+        
+        <div class="change-hint">
+            Survey is still open. You can change your preference below.
+        </div>
+        
+        <h2>Change Your Preference</h2>
+        
+        <div id="message" class="message hidden"></div>
+        
+        <div class="food-options">
+            <div class="food-card" id="vegCard" 
+                 th:classappend="${!menu.vegAvailable} ? 'disabled' : (${pooledType == 'veg'} ? 'selected' : '')"
+                 onclick="selectFood('veg')">
+                <div class="food-icon">V</div>
+                <div class="food-label">Vegetarian</div>
+                <div th:if="${menu.vegAvailable}" class="food-status available">Available</div>
+                <div th:unless="${menu.vegAvailable}" class="food-status unavailable">Not Available</div>
+            </div>
+            
+            <div class="food-card" id="nonvegCard"
+                 th:classappend="${!menu.nonvegAvailable} ? 'disabled' : (${pooledType == 'nonveg'} ? 'selected' : '')"
+                 onclick="selectFood('nonveg')">
+                <div class="food-icon">N</div>
+                <div class="food-label">Non-Veg</div>
+                <div th:if="${menu.nonvegAvailable}" class="food-status available">Available</div>
+                <div th:unless="${menu.nonvegAvailable}" class="food-status unavailable">Not Available</div>
+            </div>
+        </div>
+        
+        <button id="submitBtn" class="submit-btn change" onclick="submitPool()" disabled>
+            Select a different option to change
+        </button>
+        
+        <a href="/home" class="back-link">Back to Home</a>
+    </div>
+    
+    <!-- Already Voted and CANNOT CHANGE (survey closed) -->
+    <div th:if="${alreadyPooled && !menu.poolOpen}" class="status-card success">
+        <div class="status-icon">&#128274;</div>
+        <div class="status-title">Registration Locked</div>
+        <div class="status-desc">
+            Survey is closed. Your choice for <strong th:text="${foodDateFormatted}">the food date</strong> is final.
+        </div>
+        <div class="status-type" th:classappend="${pooledType}">
+            <span th:if="${pooledType == 'veg'}">Vegetarian</span>
+            <span th:if="${pooledType == 'nonveg'}">Non-Veg</span>
+        </div>
+        <p class="info-text">
+            Come back on <strong th:text="${foodDateFormatted}">the food date</strong> to scan and collect your food.
+        </p>
+        <a href="/home" class="back-link">Back to Home</a>
+    </div>
+    
+    <!-- Food Not Available -->
+    <div th:if="${!alreadyPooled && !menu.foodAvailable}" class="status-card unavailable">
+        <div class="status-icon">&#10006;</div>
+        <div class="status-title">No Survey Today</div>
+        <div class="status-desc">Food survey is not available today. Check back later.</div>
+        <a href="/home" class="back-link">Back to Home</a>
+    </div>
+    
+    <!-- Survey Not Open -->
+    <div th:if="${!alreadyPooled && menu.foodAvailable && !menu.poolOpen}" class="status-card closed">
+        <div class="status-icon">&#8987;</div>
+        <div class="status-title">Survey Not Started</div>
+        <div class="status-desc">Please wait for admin to start the food survey.</div>
+        <a href="/home" class="back-link">Back to Home</a>
+    </div>
+    
+    <!-- Survey Open - Show Options (New Registration) -->
+    <div th:if="${!alreadyPooled && menu.foodAvailable && menu.poolOpen}">
+        <h2>Select Your Meal</h2>
+        
+        <div id="message" class="message hidden"></div>
+        
+        <div class="food-options">
+            <div class="food-card" id="vegCard" 
+                 th:classappend="${!menu.vegAvailable} ? 'disabled'"
+                 onclick="selectFood('veg')">
+                <div class="food-icon">V</div>
+                <div class="food-label">Vegetarian</div>
+                <div th:if="${menu.vegAvailable}" class="food-status available">Available</div>
+                <div th:unless="${menu.vegAvailable}" class="food-status unavailable">Not Available</div>
+                <div class="food-dishes" th:if="${menu.vegAvailable}">
+                    <span th:if="${#lists.isEmpty(menu.vegItems)}">Enjoy your meal</span>
+                    <span th:unless="${#lists.isEmpty(menu.vegItems)}" th:text="${#strings.listJoin(menu.vegItems, ', ')}"></span>
+                </div>
+            </div>
+            
+            <div class="food-card" id="nonvegCard"
+                 th:classappend="${!menu.nonvegAvailable} ? 'disabled'"
+                 onclick="selectFood('nonveg')">
+                <div class="food-icon">N</div>
+                <div class="food-label">Non-Veg</div>
+                <div th:if="${menu.nonvegAvailable}" class="food-status available">Available</div>
+                <div th:unless="${menu.nonvegAvailable}" class="food-status unavailable">Not Available</div>
+                <div class="food-dishes" th:if="${menu.nonvegAvailable}">
+                    <span th:if="${#lists.isEmpty(menu.nonvegItems)}">Enjoy your meal</span>
+                    <span th:unless="${#lists.isEmpty(menu.nonvegItems)}" th:text="${#strings.listJoin(menu.nonvegItems, ', ')}"></span>
+                </div>
+            </div>
+        </div>
+        
+        <p class="info-text">
+            You are voting for food on <strong th:text="${foodDateFormatted}">the food date</strong>.<br>
+            You can change your preference until the survey closes.
+        </p>
+        
+        <button id="submitBtn" class="submit-btn" onclick="submitPool()" disabled>
+            Select a meal option
+        </button>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    let selectedFood = null;
+    const vegAvailable = [[${menu.vegAvailable}]];
+    const nonvegAvailable = [[${menu.nonvegAvailable}]];
+    const currentChoice = [[${pooledType}]] || null;
+    
+    function selectFood(type) {
+        if (type === 'veg' && !vegAvailable) return;
+        if (type === 'nonveg' && !nonvegAvailable) return;
+        
+        selectedFood = type;
+        
+        document.querySelectorAll('.food-card').forEach(c => c.classList.remove('selected'));
+        document.getElementById(type + 'Card').classList.add('selected');
+        
+        const btn = document.getElementById('submitBtn');
+        
+        if (currentChoice && currentChoice === type) {
+            btn.disabled = true;
+            btn.textContent = 'Already selected ' + (type === 'veg' ? 'Vegetarian' : 'Non-Veg');
+        } else {
+            btn.disabled = false;
+            if (currentChoice) {
+                btn.textContent = 'Change to ' + (type === 'veg' ? 'Vegetarian' : 'Non-Veg');
+            } else {
+                btn.textContent = 'Register for ' + (type === 'veg' ? 'Vegetarian' : 'Non-Veg');
+            }
+        }
+    }
+    
+    async function submitPool() {
+        if (!selectedFood) return;
+        
+        const action = currentChoice ? 'change your preference' : 'register';
+        if (!confirm('Are you sure you want to ' + action + '?')) {
+            return;
+        }
+        
+        const btn = document.getElementById('submitBtn');
+        btn.disabled = true;
+        btn.textContent = currentChoice ? 'Changing...' : 'Registering...';
+        
+        try {
+            const res = await fetch('/api/pool', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({foodType: selectedFood})
+            });
+            
+            const data = await res.json();
+            const msg = document.getElementById('message');
+            
+            if (data.success) {
+                msg.className = 'message success';
+                msg.textContent = data.message;
+                msg.classList.remove('hidden');
+                setTimeout(() => window.location.href = '/home', 1500);
+            } else {
+                msg.className = 'message error';
+                msg.textContent = data.error;
+                msg.classList.remove('hidden');
+                btn.disabled = false;
+                btn.textContent = 'Try Again';
+            }
+        } catch (e) {
+            alert('Error: ' + e.message);
+            btn.disabled = false;
+        }
+    }
+</script>
+</body>
+</html>
