@@ -180,7 +180,8 @@
     
     <!-- Employee List -->
     <h2>All Employees <span class="count" th:text="'(' + ${#lists.size(employees)} + ')'"></span></h2>
-    <div class="user-list">
+    <input type="text" class="form-input" id="searchInput" placeholder="Search by name or ID..." onkeyup="filterEmployees()" style="margin-bottom:16px;width:100%;max-width:400px">
+    <div class="user-list" id="employeeList">
         <div th:each="emp : ${employees}" class="user-item" 
              th:data-id="${emp.employeeId}" th:data-name="${emp.name}">
             <div class="user-info">
@@ -210,6 +211,20 @@ function showMessage(text, isSuccess) {
     msg.textContent = text;
     msg.className = 'message ' + (isSuccess ? 'success' : 'error');
     setTimeout(() => msg.classList.add('hidden'), 3000);
+}
+
+function filterEmployees() {
+    const filter = document.getElementById('searchInput').value.toLowerCase();
+    const items = document.querySelectorAll('.user-item');
+    items.forEach(item => {
+        const name = item.dataset.name?.toLowerCase() || '';
+        const id = item.dataset.id?.toLowerCase() || '';
+        if (name.includes(filter) || id.includes(filter)) {
+            item.style.display = '';
+        } else {
+            item.style.display = 'none';
+        }
+    });
 }
 
 async function addEmployee() {

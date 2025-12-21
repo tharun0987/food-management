@@ -7,142 +7,99 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root{
-            --primary:#0891b2;
-            --primary-dark:#0e7490;
-            --secondary:#0d9488;
-            --accent:#06b6d4;
-            --success:#10b981;
-            --warning:#f59e0b;
-            --danger:#ef4444;
-            --bg-dark:#0c1421;
-            --bg-card:#111827;
-            --bg-elevated:#1f2937;
-            --text:#f9fafb;
-            --text-muted:#9ca3af;
-            --border:#374151;
+            --primary:#0891b2;--primary-dark:#0e7490;--secondary:#0d9488;--accent:#06b6d4;
+            --success:#10b981;--warning:#f59e0b;--danger:#ef4444;
+            --bg-dark:#0c1421;--bg-card:#111827;--bg-elevated:#1f2937;
+            --text:#f9fafb;--text-muted:#9ca3af;--border:#374151;
         }
         *{margin:0;padding:0;box-sizing:border-box}
         body{font-family:'Inter',sans-serif;background:var(--bg-dark);min-height:100vh;color:var(--text)}
         .header{background:linear-gradient(135deg,var(--primary-dark),var(--secondary));padding:16px 24px;display:flex;justify-content:space-between;align-items:center}
         .header-left{display:flex;align-items:center;gap:16px}
-        .back{color:#fff;text-decoration:none;font-size:1.25rem;opacity:0.8}
-        .back:hover{opacity:1}
-        .logo{font-size:1.1rem;font-weight:700;letter-spacing:-0.5px}
-        .logo span{color:var(--accent)}
+        .back{color:#fff;text-decoration:none;font-size:1.25rem;opacity:0.8}.back:hover{opacity:1}
+        .logo{font-size:1.1rem;font-weight:700}.logo span{color:var(--accent)}
         .header-right{display:flex;align-items:center;gap:12px}
         .role-badge{background:rgba(255,255,255,0.15);padding:4px 12px;border-radius:20px;font-size:0.7rem;font-weight:600}
-        .date-display{font-size:0.85rem;opacity:0.9}
         .container{max-width:1200px;margin:0 auto;padding:24px}
-        
         .nav-links{display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap}
         .nav-link{color:var(--text-muted);text-decoration:none;padding:10px 18px;border-radius:8px;background:var(--bg-card);font-size:0.85rem;font-weight:500;border:1px solid var(--border);transition:all 0.2s}
         .nav-link:hover,.nav-link.active{background:var(--primary);color:#fff;border-color:var(--primary)}
         .nav-link.disabled{opacity:0.4;pointer-events:none}
-        
         .tabs{display:flex;gap:4px;margin-bottom:24px;background:var(--bg-card);padding:6px;border-radius:10px;width:fit-content}
         .tab{padding:12px 24px;border:none;background:transparent;color:var(--text-muted);font-size:0.9rem;font-weight:500;cursor:pointer;border-radius:8px;transition:all 0.2s}
-        .tab.active{background:var(--primary);color:#fff}
-        .tab:hover:not(.active){background:var(--bg-elevated)}
-        
-        .dashboard-section{display:none}
-        .dashboard-section.active{display:block}
-        
+        .tab.active{background:var(--primary);color:#fff}.tab:hover:not(.active){background:var(--bg-elevated)}
+        .dashboard-section{display:none}.dashboard-section.active{display:block}
         .section{background:var(--bg-card);border-radius:12px;padding:24px;margin-bottom:20px;border:1px solid var(--border)}
         .section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px}
         .section-title{font-size:1.2rem;font-weight:600}
         .section-badge{padding:6px 14px;border-radius:20px;font-size:0.75rem;font-weight:600}
         .section-badge.active{background:rgba(16,185,129,0.15);color:var(--success)}
-        .section-badge.closed{background:rgba(245,158,11,0.15);color:var(--warning)}
         .section-badge.collection{background:rgba(6,182,212,0.15);color:var(--accent)}
-        
         .pool-control{background:linear-gradient(135deg,rgba(8,145,178,0.1),rgba(13,148,136,0.05));border:1px solid var(--primary);border-radius:12px;padding:28px;text-align:center}
         .pool-status{font-size:1.4rem;font-weight:700;margin:12px 0}
-        .pool-status.open{color:var(--success)}
-        .pool-status.closed{color:var(--warning)}
-        .pool-status.unavailable{color:var(--danger)}
+        .pool-status.open{color:var(--success)}.pool-status.closed{color:var(--warning)}.pool-status.unavailable{color:var(--danger)}
         .pool-timer{background:var(--bg-elevated);padding:14px 20px;border-radius:8px;margin:16px 0;display:inline-block}
         .pool-timer .time{font-size:1.5rem;font-weight:700;color:var(--accent)}
         .food-date-box{background:var(--bg-elevated);padding:12px 20px;border-radius:8px;margin:12px 0;font-size:0.9rem}
         .food-date-box strong{color:var(--accent)}
-        
         .config-row{display:flex;gap:16px;justify-content:center;align-items:center;margin:20px 0;flex-wrap:wrap}
         .config-row label{font-size:0.85rem;color:var(--text-muted)}
         .config-row select,.config-row input{padding:10px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg-elevated);color:var(--text);font-size:0.9rem}
-        
         .btn{padding:12px 28px;border:none;border-radius:8px;font-size:0.95rem;font-weight:600;cursor:pointer;transition:all 0.2s}
         .btn-primary{background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff}
         .btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(8,145,178,0.3)}
         .btn-danger{background:var(--danger);color:#fff}
         .btn-success{background:var(--success);color:#fff}
         .btn-sm{padding:8px 16px;font-size:0.8rem}
-        
         .stats-row{display:flex;gap:16px;margin:20px 0;flex-wrap:wrap}
         .stat-box{background:var(--bg-elevated);border-radius:10px;padding:20px 30px;text-align:center;flex:1;min-width:120px}
         .stat-value{font-size:2.5rem;font-weight:700}
-        .stat-value.veg{color:var(--success)}
-        .stat-value.nonveg{color:#f97316}
-        .stat-value.total{color:var(--accent)}
-        .stat-value.collected{color:var(--warning)}
-        .stat-value.pending{color:var(--text-muted)}
-        .stat-value.no-vote{color:var(--danger)}
+        .stat-value.veg{color:var(--success)}.stat-value.nonveg{color:#f97316}.stat-value.total{color:var(--accent)}
+        .stat-value.collected{color:var(--warning)}.stat-value.pending{color:var(--text-muted)}.stat-value.no-vote{color:var(--danger)}
         .stat-label{font-size:0.8rem;color:var(--text-muted);margin-top:6px}
-        
         .vendor-summary{background:linear-gradient(135deg,rgba(16,185,129,0.1),rgba(13,148,136,0.05));border:2px solid var(--success);border-radius:12px;padding:24px;margin:20px 0}
         .vendor-summary h3{color:var(--success);margin-bottom:16px;font-size:1rem}
         .vendor-row{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)}
         .vendor-row:last-child{border:none}
-        .vendor-row span{font-size:1.1rem}
-        .vendor-row strong{font-size:1.3rem}
-        
+        .search-box{width:100%;padding:10px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg-elevated);color:var(--text);font-size:0.9rem;margin-bottom:12px}
+        .search-box:focus{outline:none;border-color:var(--primary)}
         .employee-list{background:var(--bg-elevated);border-radius:10px;overflow:hidden;max-height:350px;overflow-y:auto}
-        .list-header{display:grid;grid-template-columns:2fr 1fr;padding:12px 20px;background:var(--bg-card);font-size:0.75rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;position:sticky;top:0}
+        .list-header{display:grid;grid-template-columns:2fr 1fr;padding:12px 20px;background:var(--bg-card);font-size:0.75rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;position:sticky;top:0;z-index:1}
         .list-item{display:grid;grid-template-columns:2fr 1fr;padding:14px 20px;border-bottom:1px solid var(--border);align-items:center}
         .list-item:last-child{border:none}
+        .list-item.hidden{display:none}
         .list-name{font-weight:500;font-size:0.9rem}
         .list-badge{padding:4px 12px;border-radius:16px;font-size:0.7rem;font-weight:600;text-align:center;width:fit-content}
         .list-badge.veg{background:rgba(16,185,129,0.15);color:var(--success)}
         .list-badge.nonveg{background:rgba(249,115,22,0.15);color:#f97316}
         .list-badge.collected{background:rgba(6,182,212,0.15);color:var(--accent)}
-        .list-badge.pending{background:rgba(156,163,175,0.15);color:var(--text-muted)}
         .list-badge.no-vote{background:rgba(239,68,68,0.15);color:var(--danger)}
         .empty-state{padding:40px;text-align:center;color:var(--text-muted)}
-        
         .notify-section{background:var(--bg-elevated);border-radius:10px;padding:20px;margin:16px 0}
         .notify-section h4{font-size:0.85rem;color:var(--text-muted);margin-bottom:14px}
         .notify-buttons{display:flex;flex-wrap:wrap;gap:10px}
         .notify-btn{padding:10px 16px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text);font-size:0.8rem;cursor:pointer;transition:all 0.2s}
         .notify-btn:hover{border-color:var(--primary);background:rgba(8,145,178,0.1)}
         .notify-btn.primary{background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;border:none}
-        
         .message{padding:14px;border-radius:8px;margin:16px 0;text-align:center;font-size:0.9rem}
         .message.success{background:rgba(16,185,129,0.15);color:var(--success)}
         .message.error{background:rgba(239,68,68,0.15);color:var(--danger)}
         .hidden{display:none}
-        
         .export-btn{display:flex;align-items:center;gap:8px}
         .export-btn svg{width:18px;height:18px}
-        
         .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px}
-        
         .date-filter{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:16px;background:var(--bg-elevated);border-radius:10px;margin-bottom:20px}
         .date-filter label{font-size:0.85rem;color:var(--text-muted)}
         .date-filter input{padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);font-family:inherit}
-        .date-filter .btn{padding:10px 20px}
         .quick-btns{display:flex;gap:6px;flex-wrap:wrap}
         .quick-btn{padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text-muted);font-size:0.75rem;cursor:pointer}
         .quick-btn:hover,.quick-btn.active{border-color:var(--primary);color:var(--primary);background:rgba(8,145,178,0.1)}
-        
         .data-table{width:100%;border-collapse:collapse}
         .data-table th,.data-table td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--border);font-size:0.85rem}
         .data-table th{background:var(--bg-card);color:var(--text-muted);font-weight:600;font-size:0.75rem;text-transform:uppercase}
         .data-table .number{text-align:right}
-        
-        @media(max-width:800px){
-            .two-col{grid-template-columns:1fr}
-            .stats-row{flex-direction:column}
-            .stat-box{min-width:100%}
-            .date-filter{flex-direction:column;align-items:stretch}
-        }
+        .list-count{font-size:0.75rem;color:var(--text-muted);margin-left:8px}
+        @media(max-width:800px){.two-col{grid-template-columns:1fr}.stats-row{flex-direction:column}.date-filter{flex-direction:column;align-items:stretch}}
     </style>
 </head>
 <body>
@@ -153,7 +110,7 @@
     </div>
     <div class="header-right">
         <span class="role-badge" th:text="${userRole}">ADMIN</span>
-        <span class="date-display" th:text="${todayDisplay}">Today</span>
+        <span th:text="${todayDisplay}" style="font-size:0.85rem;opacity:0.9">Today</span>
     </div>
 </div>
 
@@ -166,57 +123,46 @@
     
     <div id="message" class="message hidden"></div>
     
-    <!-- Tab Navigation -->
     <div class="tabs">
         <button class="tab active" onclick="showTab('survey')">Survey (For Vendor)</button>
         <button class="tab" onclick="showTab('collection')">Collection (Food Day)</button>
         <button class="tab" onclick="showTab('history')">History / Reports</button>
     </div>
     
-    <!-- ==================== SURVEY DASHBOARD ==================== -->
+    <!-- ==================== SURVEY TAB ==================== -->
     <div id="surveyDashboard" class="dashboard-section active">
-        
-        <!-- Survey Control -->
         <div class="section">
             <div class="section-header">
-                <span class="section-title">Start Food Survey</span>
+                <span class="section-title">Food Survey Control</span>
                 <span th:if="${poolOpen}" class="section-badge active">SURVEY OPEN</span>
             </div>
             
             <div class="pool-control">
                 <div th:if="${!foodAvailable}">
                     <div class="pool-status unavailable">Food Not Available Today</div>
-                    <p style="color:var(--text-muted);margin:12px 0">Configure menu first to enable survey</p>
+                    <p style="color:var(--text-muted);margin:12px 0">Configure menu first</p>
                     <a href="/admin/menu" class="btn btn-primary" style="display:inline-block;text-decoration:none;margin-top:12px">Configure Menu</a>
                 </div>
                 
                 <div th:if="${foodAvailable}">
                     <div th:if="${poolOpen}">
                         <div class="pool-status open">SURVEY IS OPEN</div>
-                        <div class="food-date-box">
-                            Food will be served on: <strong th:text="${surveyFoodDateFormatted}">Tomorrow</strong>
-                        </div>
+                        <div class="food-date-box">Food Date: <strong th:text="${surveyFoodDateFormatted}">Tomorrow</strong></div>
                         <div th:if="${minutesLeft != null}" class="pool-timer">
-                            <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:4px">Auto-closes at <span th:text="${autoCloseTime}"></span></div>
-                            <span class="time" th:text="${minutesLeft} + ' min'"></span> remaining
+                            <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:4px">Closes at <span th:text="${autoCloseTime}"></span></div>
+                            <span class="time" th:text="${minutesLeft} + ' min'"></span> left
                         </div>
                         <button class="btn btn-danger" onclick="closePool()" style="margin-top:16px">Stop Survey</button>
                     </div>
                     
                     <div th:unless="${poolOpen}">
                         <div class="pool-status closed">NO ACTIVE SURVEY</div>
-                        <p style="color:var(--text-muted);margin:12px 0">Start a survey to collect food preferences for vendor</p>
                         <div class="config-row">
                             <label>Duration:</label>
                             <select id="duration">
-                                <option value="1">1 Hour</option>
-                                <option value="2">2 Hours</option>
-                                <option value="3">3 Hours</option>
-                                <option value="4">4 Hours</option>
-                                <option value="6" selected>6 Hours</option>
-                                <option value="8">8 Hours</option>
-                                <option value="12">12 Hours</option>
-                                <option value="24">24 Hours</option>
+                                <option value="1">1 Hour</option><option value="2">2 Hours</option><option value="3">3 Hours</option>
+                                <option value="4">4 Hours</option><option value="6" selected>6 Hours</option><option value="8">8 Hours</option>
+                                <option value="12">12 Hours</option><option value="24">24 Hours</option>
                             </select>
                             <label>Food Date:</label>
                             <input type="date" id="foodDate" th:value="${#temporals.format(#temporals.createNow().plusDays(1), 'yyyy-MM-dd')}">
@@ -227,180 +173,145 @@
             </div>
         </div>
         
-        <!-- Vendor Summary -->
         <div th:if="${surveyTotalVoted > 0}" class="section">
             <div class="section-header">
-                <span class="section-title">Vendor Summary - Food for <span th:text="${surveyFoodDateFormatted}">Date</span></span>
+                <span class="section-title">Vendor Summary - <span th:text="${surveyFoodDateFormatted}">Date</span></span>
                 <button class="btn btn-success btn-sm export-btn" onclick="exportSurvey()">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-                    </svg>
-                    Export for Vendor
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Export
                 </button>
             </div>
             
             <div class="vendor-summary">
-                <h3>Order Summary for Vendor</h3>
-                <div class="vendor-row">
-                    <span>Vegetarian Meals</span>
-                    <strong th:text="${surveyVegCount}" style="color:var(--success)">0</strong>
-                </div>
-                <div class="vendor-row">
-                    <span>Non-Vegetarian Meals</span>
-                    <strong th:text="${surveyNonvegCount}" style="color:#f97316">0</strong>
-                </div>
+                <h3>Order for Vendor</h3>
+                <div class="vendor-row"><span>Vegetarian</span><strong th:text="${surveyVegCount}" style="color:var(--success)">0</strong></div>
+                <div class="vendor-row"><span>Non-Vegetarian</span><strong th:text="${surveyNonvegCount}" style="color:#f97316">0</strong></div>
                 <div class="vendor-row" style="border-top:2px solid var(--success);padding-top:16px;margin-top:8px">
-                    <span style="font-weight:600">TOTAL MEALS REQUIRED</span>
+                    <span style="font-weight:600">TOTAL</span>
                     <strong th:text="${surveyTotalVoted}" style="color:var(--accent);font-size:1.5rem">0</strong>
                 </div>
             </div>
             
             <div class="two-col">
                 <div>
-                    <h4 style="margin-bottom:12px;color:var(--success)">Vegetarian (<span th:text="${surveyVegCount}">0</span>)</h4>
-                    <div class="employee-list">
+                    <h4 style="margin-bottom:12px;color:var(--success)">Vegetarian<span class="list-count" th:text="'(' + ${surveyVegCount} + ')'"></span></h4>
+                    <input type="text" class="search-box" placeholder="Search names..." onkeyup="filterList(this, 'vegList')">
+                    <div class="employee-list" id="vegList">
                         <div class="list-header"><span>Name</span><span>Choice</span></div>
-                        <div th:each="pool : ${surveyPools}" th:if="${pool.foodType == 'veg'}" class="list-item">
+                        <div th:each="pool : ${surveyPools}" th:if="${pool.foodType == 'veg'}" class="list-item" th:data-name="${pool.employeeName}">
                             <span class="list-name" th:text="${pool.employeeName}">Name</span>
                             <span class="list-badge veg">VEG</span>
                         </div>
-                        <div th:if="${surveyVegCount == 0}" class="empty-state">No vegetarian orders</div>
+                        <div th:if="${surveyVegCount == 0}" class="empty-state">No veg orders</div>
                     </div>
                 </div>
                 <div>
-                    <h4 style="margin-bottom:12px;color:#f97316">Non-Vegetarian (<span th:text="${surveyNonvegCount}">0</span>)</h4>
-                    <div class="employee-list">
+                    <h4 style="margin-bottom:12px;color:#f97316">Non-Vegetarian<span class="list-count" th:text="'(' + ${surveyNonvegCount} + ')'"></span></h4>
+                    <input type="text" class="search-box" placeholder="Search names..." onkeyup="filterList(this, 'nonvegList')">
+                    <div class="employee-list" id="nonvegList">
                         <div class="list-header"><span>Name</span><span>Choice</span></div>
-                        <div th:each="pool : ${surveyPools}" th:if="${pool.foodType == 'nonveg'}" class="list-item">
+                        <div th:each="pool : ${surveyPools}" th:if="${pool.foodType == 'nonveg'}" class="list-item" th:data-name="${pool.employeeName}">
                             <span class="list-name" th:text="${pool.employeeName}">Name</span>
                             <span class="list-badge nonveg">NON-VEG</span>
                         </div>
-                        <div th:if="${surveyNonvegCount == 0}" class="empty-state">No non-vegetarian orders</div>
+                        <div th:if="${surveyNonvegCount == 0}" class="empty-state">No non-veg orders</div>
                     </div>
                 </div>
             </div>
             
             <div th:if="${poolOpen}" class="notify-section">
-                <h4>Send Reminders</h4>
+                <h4>Send Notifications</h4>
                 <div class="notify-buttons">
                     <button class="notify-btn" onclick="sendNotify('participate')">Remind to Vote</button>
-                    <button class="notify-btn" onclick="sendNotify('lastcall')">Last Call to Vote</button>
-                    <button class="notify-btn primary" onclick="showCustomNotify()">Custom Message</button>
+                    <button class="notify-btn" onclick="sendNotify('lastcall')">Last Call</button>
+                    <button class="notify-btn primary" onclick="showCustomNotify()">Custom</button>
                 </div>
                 <div id="customNotifyBox" class="hidden" style="margin-top:16px">
-                    <textarea id="customMessage" placeholder="Enter your message..." style="width:100%;padding:12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);min-height:80px;font-family:inherit;resize:vertical"></textarea>
+                    <textarea id="customMessage" placeholder="Enter message..." style="width:100%;padding:12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);min-height:80px;font-family:inherit"></textarea>
                     <button class="btn btn-primary btn-sm" onclick="sendCustomNotify()" style="margin-top:12px">Send</button>
                 </div>
             </div>
         </div>
     </div>
     
-    <!-- ==================== COLLECTION DASHBOARD ==================== -->
+    <!-- ==================== COLLECTION TAB ==================== -->
     <div id="collectionDashboard" class="dashboard-section">
-        
         <div th:if="${!isFoodCollectionDay}" class="section">
             <div class="pool-control">
                 <div class="pool-status" style="color:var(--text-muted)">No Food Collection Today</div>
-                <p style="color:var(--text-muted);margin:12px 0">There is no scheduled food for today.</p>
+                <p style="color:var(--text-muted);margin:12px 0">No scheduled food for today.</p>
             </div>
         </div>
         
         <div th:if="${isFoodCollectionDay}">
             <div class="section">
                 <div class="section-header">
-                    <span class="section-title">Today's Food Collection</span>
+                    <span class="section-title">Today's Collection</span>
                     <div style="display:flex;gap:8px">
-                        <span class="section-badge collection">COLLECTION DAY</span>
+                        <span class="section-badge collection">FOOD DAY</span>
                         <button class="btn btn-success btn-sm export-btn" onclick="exportCollection()">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-                            </svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                             Export
                         </button>
                     </div>
                 </div>
                 
                 <div class="stats-row">
-                    <div class="stat-box">
-                        <div class="stat-value total" th:text="${collectionTotalVoted}">0</div>
-                        <div class="stat-label">Expected (Voted)</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-value collected" th:text="${collectionCollected}">0</div>
-                        <div class="stat-label">Collected</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-value pending" th:text="${collectionTotalVoted - collectionCollected}">0</div>
-                        <div class="stat-label">Not Yet Collected</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-value no-vote" th:text="${collectionWithoutVote}">0</div>
-                        <div class="stat-label">Collected Without Vote</div>
-                    </div>
+                    <div class="stat-box"><div class="stat-value total" th:text="${collectionTotalVoted}">0</div><div class="stat-label">Expected</div></div>
+                    <div class="stat-box"><div class="stat-value collected" th:text="${collectionCollected}">0</div><div class="stat-label">Collected</div></div>
+                    <div class="stat-box"><div class="stat-value pending" th:text="${collectionTotalVoted - collectionCollected}">0</div><div class="stat-label">Pending</div></div>
+                    <div class="stat-box"><div class="stat-value no-vote" th:text="${collectionWithoutVote}">0</div><div class="stat-label">No Vote</div></div>
                 </div>
                 
                 <div class="notify-section">
-                    <h4>Send Reminders</h4>
                     <div class="notify-buttons">
-                        <button class="notify-btn" onclick="sendNotify('eat')">Food Has Arrived</button>
-                        <button class="notify-btn primary" onclick="showCustomNotify()">Custom Message</button>
+                        <button class="notify-btn" onclick="sendNotify('eat')">Food Arrived</button>
+                        <button class="notify-btn primary" onclick="showCustomNotify()">Custom</button>
                     </div>
                 </div>
             </div>
             
             <div class="two-col">
                 <div class="section">
-                    <div class="section-header">
-                        <span class="section-title" style="color:var(--warning)">Collected (<span th:text="${collectionCollected}">0</span>)</span>
-                    </div>
-                    <div class="employee-list">
+                    <div class="section-header"><span class="section-title" style="color:var(--warning)">Collected<span class="list-count" th:text="'(' + ${collectionCollected} + ')'"></span></span></div>
+                    <input type="text" class="search-box" placeholder="Search..." onkeyup="filterList(this, 'collectedList')">
+                    <div class="employee-list" id="collectedList">
                         <div class="list-header"><span>Name</span><span>Status</span></div>
-                        <div th:each="scan : ${collectionScans}" class="list-item">
+                        <div th:each="scan : ${collectionScans}" class="list-item" th:data-name="${scan.employeeName}">
                             <span class="list-name" th:text="${scan.employeeName}">Name</span>
-                            <span class="list-badge" th:classappend="${scan.didVote} ? 'collected' : 'no-vote'" 
-                                  th:text="${scan.didVote} ? 'Voted' : 'No Vote'">Status</span>
+                            <span class="list-badge" th:classappend="${scan.didVote} ? 'collected' : 'no-vote'" th:text="${scan.didVote} ? 'Voted' : 'No Vote'">Status</span>
                         </div>
-                        <div th:if="${#lists.isEmpty(collectionScans)}" class="empty-state">No one has collected yet</div>
+                        <div th:if="${#lists.isEmpty(collectionScans)}" class="empty-state">No collections yet</div>
                     </div>
                 </div>
                 
                 <div class="section">
-                    <div class="section-header">
-                        <span class="section-title" style="color:var(--text-muted)">Pending (<span th:text="${collectionTotalVoted - collectionCollected}">0</span>)</span>
-                    </div>
-                    <div class="employee-list">
+                    <div class="section-header"><span class="section-title" style="color:var(--text-muted)">Pending<span class="list-count" th:text="'(' + ${collectionTotalVoted - collectionCollected} + ')'"></span></span></div>
+                    <input type="text" class="search-box" placeholder="Search..." onkeyup="filterList(this, 'pendingList')">
+                    <div class="employee-list" id="pendingList">
                         <div class="list-header"><span>Name</span><span>Choice</span></div>
                         <th:block th:each="pool : ${collectionPools}">
-                            <div th:unless="${#lists.contains(collectedEmployeeIds, pool.employeeId)}" class="list-item">
+                            <div th:unless="${#lists.contains(collectedEmployeeIds, pool.employeeId)}" class="list-item" th:data-name="${pool.employeeName}">
                                 <span class="list-name" th:text="${pool.employeeName}">Name</span>
-                                <span class="list-badge" th:classappend="${pool.foodType == 'veg'} ? 'veg' : 'nonveg'" 
-                                      th:text="${pool.foodType == 'veg'} ? 'VEG' : 'NON-VEG'">Choice</span>
+                                <span class="list-badge" th:classappend="${pool.foodType == 'veg'} ? 'veg' : 'nonveg'" th:text="${pool.foodType == 'veg'} ? 'VEG' : 'NON-VEG'">Choice</span>
                             </div>
                         </th:block>
-                        <div th:if="${collectionTotalVoted - collectionCollected <= 0}" class="empty-state">Everyone has collected</div>
+                        <div th:if="${collectionTotalVoted - collectionCollected <= 0}" class="empty-state">All collected</div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
     
-    <!-- ==================== HISTORY / REPORTS ==================== -->
+    <!-- ==================== HISTORY TAB ==================== -->
     <div id="historyDashboard" class="dashboard-section">
         <div class="section">
-            <div class="section-header">
-                <span class="section-title">Historical Data</span>
-            </div>
+            <div class="section-header"><span class="section-title">Historical Data</span></div>
             
             <div class="date-filter">
-                <div>
-                    <label>From:</label>
-                    <input type="date" id="startDate" th:value="${startDate}">
-                </div>
-                <div>
-                    <label>To:</label>
-                    <input type="date" id="endDate" th:value="${endDate}">
-                </div>
-                <button class="btn btn-primary" onclick="loadReport()">View Data</button>
+                <div><label>From:</label><input type="date" id="startDate" th:value="${startDate}"></div>
+                <div><label>To:</label><input type="date" id="endDate" th:value="${endDate}"></div>
+                <button class="btn btn-primary" onclick="loadReport()">View</button>
                 <div class="quick-btns">
                     <button class="quick-btn" onclick="setRange(7)">7 Days</button>
                     <button class="quick-btn" onclick="setRange(30)">30 Days</button>
@@ -410,37 +321,16 @@
             
             <div th:if="${report != null && report.foodPoolDays > 0}">
                 <div class="stats-row">
-                    <div class="stat-box">
-                        <div class="stat-value total" th:text="${report.foodPoolDays}">0</div>
-                        <div class="stat-label">Active Days</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-value veg" th:text="${report.totalVeg}">0</div>
-                        <div class="stat-label">Veg Votes</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-value nonveg" th:text="${report.totalNonveg}">0</div>
-                        <div class="stat-label">Non-Veg Votes</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-value collected" th:text="${report.totalCollected}">0</div>
-                        <div class="stat-label">Total Collected</div>
-                    </div>
+                    <div class="stat-box"><div class="stat-value total" th:text="${report.foodPoolDays}">0</div><div class="stat-label">Active Days</div></div>
+                    <div class="stat-box"><div class="stat-value veg" th:text="${report.totalVeg}">0</div><div class="stat-label">Veg Votes</div></div>
+                    <div class="stat-box"><div class="stat-value nonveg" th:text="${report.totalNonveg}">0</div><div class="stat-label">Non-Veg</div></div>
+                    <div class="stat-box"><div class="stat-value collected" th:text="${report.totalCollected}">0</div><div class="stat-label">Collected</div></div>
                 </div>
                 
                 <h4 style="margin:24px 0 12px;color:var(--text-muted)">Daily Breakdown</h4>
                 <div style="overflow-x:auto;border-radius:8px;border:1px solid var(--border)">
                     <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Day</th>
-                                <th class="number">Veg</th>
-                                <th class="number">Non-Veg</th>
-                                <th class="number">Total Voted</th>
-                                <th class="number">Collected</th>
-                            </tr>
-                        </thead>
+                        <thead><tr><th>Date</th><th>Day</th><th class="number">Veg</th><th class="number">Non-Veg</th><th class="number">Total</th><th class="number">Collected</th></tr></thead>
                         <tbody>
                             <tr th:each="day : ${report.dailyData}">
                                 <td th:text="${day.date}">Date</td>
@@ -456,16 +346,14 @@
                 
                 <div style="display:flex;justify-content:flex-end;margin-top:16px">
                     <button class="btn btn-success export-btn" onclick="exportHistory()">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-                        </svg>
-                        Export to Excel
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Export Excel
                     </button>
                 </div>
             </div>
             
             <div th:if="${report == null || report.foodPoolDays == 0}" class="empty-state">
-                <p>No data for selected date range. Select dates and click "View Data".</p>
+                <p>No data. Select dates and click View.</p>
             </div>
         </div>
     </div>
@@ -475,9 +363,22 @@
 function showTab(tab) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.dashboard-section').forEach(s => s.classList.remove('active'));
-    
     event.target.classList.add('active');
     document.getElementById(tab + 'Dashboard').classList.add('active');
+}
+
+function filterList(input, listId) {
+    const filter = input.value.toLowerCase();
+    const list = document.getElementById(listId);
+    const items = list.querySelectorAll('.list-item');
+    items.forEach(item => {
+        const name = item.getAttribute('data-name');
+        if (name && name.toLowerCase().includes(filter)) {
+            item.classList.remove('hidden');
+        } else {
+            item.classList.add('hidden');
+        }
+    });
 }
 
 function showMessage(text, isSuccess) {
@@ -497,51 +398,38 @@ function setRange(days) {
     event.target.classList.add('active');
 }
 
-function formatDate(date) {
-    return date.toISOString().split('T')[0];
-}
+function formatDate(date) { return date.toISOString().split('T')[0]; }
 
 function loadReport() {
-    const startDate = document.getElementById('startDate').value;
-    const endDate = document.getElementById('endDate').value;
-    if (!startDate || !endDate) {
-        showMessage('Please select both start and end dates', false);
-        return;
-    }
-    window.location.href = '/admin?startDate=' + startDate + '&endDate=' + endDate + '&tab=history';
+    const s = document.getElementById('startDate').value;
+    const e = document.getElementById('endDate').value;
+    if (!s || !e) { showMessage('Select dates', false); return; }
+    window.location.href = '/admin?startDate=' + s + '&endDate=' + e + '&tab=history';
 }
 
 function exportHistory() {
-    const startDate = document.getElementById('startDate').value;
-    const endDate = document.getElementById('endDate').value;
-    if (!startDate || !endDate) {
-        showMessage('Please select date range first', false);
-        return;
-    }
-    window.location.href = '/admin/reports/export?startDate=' + startDate + '&endDate=' + endDate;
+    const s = document.getElementById('startDate').value;
+    const e = document.getElementById('endDate').value;
+    if (!s || !e) { showMessage('Select dates', false); return; }
+    window.location.href = '/admin/reports/export?startDate=' + s + '&endDate=' + e;
 }
 
 async function openPool() {
     const duration = document.getElementById('duration').value;
     const foodDate = document.getElementById('foodDate').value;
-    if (!confirm('Start survey for ' + duration + ' hours?\nFood will be served on: ' + foodDate)) return;
+    if (!confirm('Start survey for ' + duration + ' hours?\nFood date: ' + foodDate)) return;
     
     const res = await fetch('/admin/pool/open', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({duration: parseInt(duration), foodDate: foodDate})
     });
     const data = await res.json();
-    if (data.success) {
-        showMessage(data.message, true);
-        setTimeout(() => location.reload(), 1500);
-    } else {
-        showMessage(data.error, false);
-    }
+    if (data.success) { showMessage(data.message, true); setTimeout(() => location.reload(), 1500); }
+    else showMessage(data.error, false);
 }
 
 async function closePool() {
-    if (!confirm('Close the survey?')) return;
+    if (!confirm('Close survey?')) return;
     const res = await fetch('/admin/pool/close', {method: 'POST'});
     const data = await res.json();
     if (data.success) location.reload();
@@ -551,58 +439,36 @@ async function closePool() {
 async function sendNotify(type) {
     const btn = event.target;
     btn.disabled = true;
-    const originalText = btn.textContent;
+    const orig = btn.textContent;
     btn.textContent = 'Sending...';
-    
     try {
         const res = await fetch('/admin/notify/' + type, {method: 'POST'});
         const data = await res.json();
         showMessage(data.message || data.error, data.success);
-    } catch (e) {
-        showMessage('Failed to send notification', false);
-    } finally {
-        btn.disabled = false;
-        btn.textContent = originalText;
-    }
+    } catch (e) { showMessage('Failed', false); }
+    finally { btn.disabled = false; btn.textContent = orig; }
 }
 
-function showCustomNotify() {
-    document.getElementById('customNotifyBox').classList.toggle('hidden');
-}
+function showCustomNotify() { document.getElementById('customNotifyBox').classList.toggle('hidden'); }
 
 async function sendCustomNotify() {
-    const message = document.getElementById('customMessage').value.trim();
-    if (!message) {
-        showMessage('Please enter a message', false);
-        return;
-    }
-    
+    const msg = document.getElementById('customMessage').value.trim();
+    if (!msg) { showMessage('Enter message', false); return; }
     try {
         const res = await fetch('/admin/notify/custom', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({message: message})
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({message: msg})
         });
         const data = await res.json();
         showMessage(data.message || data.error, data.success);
-        if (data.success) {
-            document.getElementById('customMessage').value = '';
-            document.getElementById('customNotifyBox').classList.add('hidden');
-        }
-    } catch (e) {
-        showMessage('Failed to send notification', false);
-    }
+        if (data.success) { document.getElementById('customMessage').value = ''; document.getElementById('customNotifyBox').classList.add('hidden'); }
+    } catch (e) { showMessage('Failed', false); }
 }
 
-function exportSurvey() {
-    window.location.href = '/admin/export/survey';
-}
+function exportSurvey() { window.location.href = '/admin/export/survey'; }
+function exportCollection() { window.location.href = '/admin/export/collection'; }
 
-function exportCollection() {
-    window.location.href = '/admin/export/collection';
-}
-
-// Check URL params to show correct tab
+// Tab from URL
 const urlParams = new URLSearchParams(window.location.search);
 if (urlParams.get('tab') === 'history') {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -611,10 +477,8 @@ if (urlParams.get('tab') === 'history') {
     document.getElementById('historyDashboard').classList.add('active');
 }
 
-// Auto-refresh when survey is active
-if (document.querySelector('.section-badge.active')) {
-    setTimeout(() => location.reload(), 60000);
-}
+// Auto-refresh
+if (document.querySelector('.section-badge.active')) { setTimeout(() => location.reload(), 60000); }
 </script>
 </body>
 </html>
