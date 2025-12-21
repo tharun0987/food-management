@@ -131,6 +131,7 @@ public class AdminController {
         
         model.addAttribute("today", today.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
         model.addAttribute("todayDisplay", today.format(DateTimeFormatter.ofPattern("EEEE, MMM dd")));
+        model.addAttribute("tomorrowDate", today.plusDays(1).format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
         
         return "admin/dashboard";
     }

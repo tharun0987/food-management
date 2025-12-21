@@ -4,62 +4,65 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard | Encipher Food Pool</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        :root{--primary:#0891b2;--primary-dark:#0e7490;--secondary:#0d9488;--accent:#06b6d4;--success:#10b981;--warning:#f59e0b;--danger:#ef4444;--bg-dark:#0c1421;--bg-card:#111827;--bg-elevated:#1f2937;--text:#f9fafb;--text-muted:#9ca3af;--border:#374151;}
+        :root{--primary:#0891b2;--primary-dark:#0e7490;--secondary:#0d9488;--accent:#06b6d4;--success:#10b981;--warning:#f59e0b;--danger:#ef4444;--bg:#0c1421;--card:#111827;--elevated:#1f2937;--text:#f9fafb;--muted:#9ca3af;--border:#374151}
         *{margin:0;padding:0;box-sizing:border-box}
-        body{font-family:'Inter',sans-serif;background:var(--bg-dark);min-height:100vh;color:var(--text)}
+        body{font-family:'Inter',sans-serif;background:var(--bg);min-height:100vh;color:var(--text)}
         .header{background:linear-gradient(135deg,var(--primary-dark),var(--secondary));padding:16px 24px;display:flex;justify-content:space-between;align-items:center}
-        .header-left{display:flex;align-items:center;gap:16px}
-        .back{color:#fff;text-decoration:none;font-size:1.25rem;opacity:0.8}.back:hover{opacity:1}
-        .logo{font-size:1.1rem;font-weight:700}.logo span{color:var(--accent)}
-        .role-badge{background:rgba(255,255,255,0.15);padding:4px 12px;border-radius:20px;font-size:0.7rem;font-weight:600}
+        .header a{color:#fff;text-decoration:none;font-size:1.2rem;margin-right:16px}
+        .logo{font-size:1.1rem;font-weight:700;color:#fff}
+        .badge{background:rgba(255,255,255,0.2);padding:4px 12px;border-radius:20px;font-size:0.75rem;font-weight:600;color:#fff;margin-left:12px}
         .container{max-width:1200px;margin:0 auto;padding:24px}
-        .nav-links{display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap}
-        .nav-link{color:var(--text-muted);text-decoration:none;padding:10px 18px;border-radius:8px;background:var(--bg-card);font-size:0.85rem;font-weight:500;border:1px solid var(--border);transition:all 0.2s}
-        .nav-link:hover,.nav-link.active{background:var(--primary);color:#fff;border-color:var(--primary)}
-        .nav-link.disabled{opacity:0.4;pointer-events:none}
-        .tabs{display:flex;gap:4px;margin-bottom:24px;background:var(--bg-card);padding:6px;border-radius:10px;width:fit-content}
-        .tab{padding:12px 24px;border:none;background:transparent;color:var(--text-muted);font-size:0.9rem;font-weight:500;cursor:pointer;border-radius:8px;transition:all 0.2s}
-        .tab.active{background:var(--primary);color:#fff}.tab:hover:not(.active){background:var(--bg-elevated)}
-        .dashboard-section{display:none}.dashboard-section.active{display:block}
-        .section{background:var(--bg-card);border-radius:12px;padding:24px;margin-bottom:20px;border:1px solid var(--border)}
-        .section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px}
-        .section-title{font-size:1.2rem;font-weight:600}
-        .section-badge{padding:6px 14px;border-radius:20px;font-size:0.75rem;font-weight:600}
-        .section-badge.active{background:rgba(16,185,129,0.15);color:var(--success)}
-        .section-badge.collection{background:rgba(6,182,212,0.15);color:var(--accent)}
-        .pool-control{background:linear-gradient(135deg,rgba(8,145,178,0.1),rgba(13,148,136,0.05));border:1px solid var(--primary);border-radius:12px;padding:28px;text-align:center}
+        .nav{display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap}
+        .nav a{color:var(--muted);text-decoration:none;padding:10px 18px;border-radius:8px;background:var(--card);font-size:0.85rem;font-weight:500;border:1px solid var(--border)}
+        .nav a:hover,.nav a.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+        .tabs{display:flex;gap:4px;margin-bottom:24px;background:var(--card);padding:6px;border-radius:10px;width:fit-content}
+        .tab{padding:12px 24px;border:none;background:transparent;color:var(--muted);font-size:0.9rem;font-weight:500;cursor:pointer;border-radius:8px}
+        .tab.active{background:var(--primary);color:#fff}
+        .tab:hover:not(.active){background:var(--elevated)}
+        .panel{display:none}.panel.active{display:block}
+        .card{background:var(--card);border-radius:12px;padding:24px;margin-bottom:20px;border:1px solid var(--border)}
+        .card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+        .card-title{font-size:1.2rem;font-weight:600}
+        .status-badge{padding:6px 14px;border-radius:20px;font-size:0.75rem;font-weight:600}
+        .status-badge.open{background:rgba(16,185,129,0.15);color:var(--success)}
+        .status-badge.food{background:rgba(6,182,212,0.15);color:var(--accent)}
+        .control-box{background:linear-gradient(135deg,rgba(8,145,178,0.1),rgba(13,148,136,0.05));border:1px solid var(--primary);border-radius:12px;padding:28px;text-align:center}
         .pool-status{font-size:1.4rem;font-weight:700;margin:12px 0}
-        .pool-status.open{color:var(--success)}.pool-status.closed{color:var(--warning)}.pool-status.unavailable{color:var(--danger)}
-        .pool-timer{background:var(--bg-elevated);padding:14px 20px;border-radius:8px;margin:16px 0;display:inline-block}
-        .pool-timer .time{font-size:1.5rem;font-weight:700;color:var(--accent)}
-        .food-date-box{background:var(--bg-elevated);padding:12px 20px;border-radius:8px;margin:12px 0;font-size:0.9rem}
-        .food-date-box strong{color:var(--accent)}
+        .pool-status.open{color:var(--success)}
+        .pool-status.closed{color:var(--warning)}
+        .pool-status.unavailable{color:var(--danger)}
+        .timer-box{background:var(--elevated);padding:14px 20px;border-radius:8px;margin:16px 0;display:inline-block}
+        .timer-box .time{font-size:1.5rem;font-weight:700;color:var(--accent)}
+        .food-date{background:var(--elevated);padding:12px 20px;border-radius:8px;margin:12px 0;font-size:0.9rem}
+        .food-date strong{color:var(--accent)}
         .config-row{display:flex;gap:16px;justify-content:center;align-items:center;margin:20px 0;flex-wrap:wrap}
-        .config-row label{font-size:0.85rem;color:var(--text-muted)}
-        .config-row select,.config-row input{padding:10px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg-elevated);color:var(--text);font-size:0.9rem}
+        .config-row label{font-size:0.85rem;color:var(--muted)}
+        .config-row select,.config-row input{padding:10px 16px;border-radius:8px;border:1px solid var(--border);background:var(--elevated);color:var(--text);font-size:0.9rem}
         .btn{padding:12px 28px;border:none;border-radius:8px;font-size:0.95rem;font-weight:600;cursor:pointer;transition:all 0.2s}
         .btn-primary{background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff}
-        .btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(8,145,178,0.3)}
+        .btn-primary:hover{transform:translateY(-1px)}
         .btn-danger{background:var(--danger);color:#fff}
         .btn-success{background:var(--success);color:#fff}
         .btn-sm{padding:8px 16px;font-size:0.8rem}
-        .stats-row{display:flex;gap:16px;margin:20px 0;flex-wrap:wrap}
-        .stat-box{background:var(--bg-elevated);border-radius:10px;padding:20px 30px;text-align:center;flex:1;min-width:120px}
-        .stat-value{font-size:2.5rem;font-weight:700}
-        .stat-value.veg{color:var(--success)}.stat-value.nonveg{color:#f97316}.stat-value.total{color:var(--accent)}
-        .stat-value.collected{color:var(--warning)}.stat-value.pending{color:var(--text-muted)}.stat-value.no-vote{color:var(--danger)}
-        .stat-label{font-size:0.8rem;color:var(--text-muted);margin-top:6px}
-        .vendor-summary{background:linear-gradient(135deg,rgba(16,185,129,0.1),rgba(13,148,136,0.05));border:2px solid var(--success);border-radius:12px;padding:24px;margin:20px 0}
-        .vendor-summary h3{color:var(--success);margin-bottom:16px;font-size:1rem}
+        .stats{display:flex;gap:16px;margin:20px 0;flex-wrap:wrap}
+        .stat{background:var(--elevated);border-radius:10px;padding:20px;text-align:center;flex:1;min-width:100px}
+        .stat-value{font-size:2rem;font-weight:700}
+        .stat-value.veg{color:var(--success)}
+        .stat-value.nonveg{color:#f97316}
+        .stat-value.total{color:var(--accent)}
+        .stat-value.collected{color:var(--warning)}
+        .stat-value.pending{color:var(--muted)}
+        .stat-label{font-size:0.8rem;color:var(--muted);margin-top:6px}
+        .vendor-box{background:linear-gradient(135deg,rgba(16,185,129,0.1),rgba(13,148,136,0.05));border:2px solid var(--success);border-radius:12px;padding:24px;margin:20px 0}
+        .vendor-box h3{color:var(--success);margin-bottom:16px;font-size:1rem}
         .vendor-row{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)}
         .vendor-row:last-child{border:none}
         .filter-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
-        .filter-row input,.filter-row select{padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-elevated);color:var(--text);font-size:0.85rem}
-        .filter-row input{flex:1;min-width:200px}
-        .employee-list{background:var(--bg-elevated);border-radius:10px;overflow:hidden}
-        .list-header{display:grid;grid-template-columns:1fr auto;padding:12px 20px;background:var(--bg-card);font-size:0.75rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;position:sticky;top:0;z-index:1}
+        .filter-row input,.filter-row select{padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--elevated);color:var(--text);font-size:0.85rem;flex:1;min-width:150px}
+        .list{background:var(--elevated);border-radius:10px;overflow:hidden;max-height:400px;overflow-y:auto}
+        .list-header{display:grid;grid-template-columns:1fr auto;padding:12px 20px;background:var(--card);font-size:0.75rem;font-weight:600;color:var(--muted);text-transform:uppercase}
         .list-item{display:grid;grid-template-columns:1fr auto;padding:14px 20px;border-bottom:1px solid var(--border);align-items:center}
         .list-item:last-child{border:none}
         .list-item.hidden{display:none}
@@ -67,150 +70,162 @@
         .list-badge{padding:4px 12px;border-radius:16px;font-size:0.7rem;font-weight:600}
         .list-badge.veg{background:rgba(16,185,129,0.15);color:var(--success)}
         .list-badge.nonveg{background:rgba(249,115,22,0.15);color:#f97316}
-        .list-badge.collected{background:rgba(6,182,212,0.15);color:var(--accent)}
-        .list-badge.no-vote{background:rgba(239,68,68,0.15);color:var(--danger)}
-        .empty-state{padding:40px;text-align:center;color:var(--text-muted)}
+        .list-badge.yes{background:rgba(6,182,212,0.15);color:var(--accent)}
+        .list-badge.no{background:rgba(239,68,68,0.15);color:var(--danger)}
+        .empty{padding:40px;text-align:center;color:var(--muted)}
         .pagination{display:flex;justify-content:center;align-items:center;gap:8px;margin-top:16px}
-        .pagination button{padding:8px 14px;border:1px solid var(--border);border-radius:6px;background:var(--bg-elevated);color:var(--text);cursor:pointer;font-size:0.8rem}
+        .pagination button{padding:8px 14px;border:1px solid var(--border);border-radius:6px;background:var(--elevated);color:var(--text);cursor:pointer;font-size:0.8rem}
         .pagination button:hover{border-color:var(--primary)}
         .pagination button:disabled{opacity:0.4;cursor:not-allowed}
-        .pagination span{font-size:0.85rem;color:var(--text-muted)}
-        .notify-section{background:var(--bg-elevated);border-radius:10px;padding:20px;margin:16px 0}
-        .notify-section h4{font-size:0.85rem;color:var(--text-muted);margin-bottom:14px}
-        .notify-buttons{display:flex;flex-wrap:wrap;gap:10px}
-        .notify-btn{padding:10px 16px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text);font-size:0.8rem;cursor:pointer;transition:all 0.2s}
+        .pagination span{font-size:0.85rem;color:var(--muted)}
+        .notify-box{background:var(--elevated);border-radius:10px;padding:20px;margin:16px 0}
+        .notify-box h4{font-size:0.85rem;color:var(--muted);margin-bottom:14px}
+        .notify-btns{display:flex;flex-wrap:wrap;gap:10px}
+        .notify-btn{padding:10px 16px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text);font-size:0.8rem;cursor:pointer}
         .notify-btn:hover{border-color:var(--primary);background:rgba(8,145,178,0.1)}
         .notify-btn.primary{background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;border:none}
-        .message{padding:14px;border-radius:8px;margin:16px 0;text-align:center;font-size:0.9rem}
-        .message.success{background:rgba(16,185,129,0.15);color:var(--success)}
-        .message.error{background:rgba(239,68,68,0.15);color:var(--danger)}
-        .hidden{display:none}
-        .export-btn{display:flex;align-items:center;gap:8px}
-        .export-btn svg{width:18px;height:18px}
+        .msg{padding:14px;border-radius:8px;margin:16px 0;text-align:center;font-size:0.9rem}
+        .msg.ok{background:rgba(16,185,129,0.15);color:var(--success)}
+        .msg.err{background:rgba(239,68,68,0.15);color:var(--danger)}
+        .hide{display:none}
         .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px}
-        .date-filter{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:16px;background:var(--bg-elevated);border-radius:10px;margin-bottom:20px}
-        .date-filter label{font-size:0.85rem;color:var(--text-muted)}
-        .date-filter input{padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);font-family:inherit}
+        .date-filter{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:16px;background:var(--elevated);border-radius:10px;margin-bottom:20px}
+        .date-filter label{font-size:0.85rem;color:var(--muted)}
+        .date-filter input{padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text)}
         .quick-btns{display:flex;gap:6px;flex-wrap:wrap}
-        .quick-btn{padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text-muted);font-size:0.75rem;cursor:pointer}
-        .quick-btn:hover,.quick-btn.active{border-color:var(--primary);color:var(--primary);background:rgba(8,145,178,0.1)}
-        .data-table{width:100%;border-collapse:collapse}
-        .data-table th,.data-table td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--border);font-size:0.85rem}
-        .data-table th{background:var(--bg-card);color:var(--text-muted);font-weight:600;font-size:0.75rem;text-transform:uppercase}
-        .data-table .number{text-align:right}
-        .data-table tr.clickable{cursor:pointer}.data-table tr.clickable:hover{background:var(--bg-elevated)}
+        .quick-btn{padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--muted);font-size:0.75rem;cursor:pointer}
+        .quick-btn:hover{border-color:var(--primary);color:var(--primary);background:rgba(8,145,178,0.1)}
+        table{width:100%;border-collapse:collapse}
+        th,td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--border);font-size:0.85rem}
+        th{background:var(--card);color:var(--muted);font-weight:600;font-size:0.75rem;text-transform:uppercase}
+        .num{text-align:right}
+        tr.click{cursor:pointer}
+        tr.click:hover{background:var(--elevated)}
         .modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;justify-content:center;align-items:center;z-index:100}
-        .modal-content{background:var(--bg-card);border-radius:12px;padding:24px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto}
-        .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+        .modal-box{background:var(--card);border-radius:12px;padding:24px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto}
+        .modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
         .modal-title{font-size:1.1rem;font-weight:600}
-        .modal-close{background:none;border:none;color:var(--text-muted);font-size:1.5rem;cursor:pointer}
-        .names-list{display:flex;flex-direction:column;gap:8px}
-        .name-item{padding:10px 16px;background:var(--bg-elevated);border-radius:8px;display:flex;justify-content:space-between}
-        @media(max-width:800px){.two-col{grid-template-columns:1fr}.stats-row{flex-direction:column}.date-filter,.filter-row{flex-direction:column;align-items:stretch}}
+        .modal-close{background:none;border:none;color:var(--muted);font-size:1.5rem;cursor:pointer}
+        .name-list{display:flex;flex-direction:column;gap:8px}
+        .name-row{padding:10px 16px;background:var(--elevated);border-radius:8px;display:flex;justify-content:space-between}
+        @media(max-width:800px){.two-col{grid-template-columns:1fr}.stats{flex-direction:column}.date-filter,.filter-row{flex-direction:column;align-items:stretch}}
     </style>
 </head>
 <body>
 <div class="header">
-    <div class="header-left">
-        <a href="/home" class="back">&#8592;</a>
-        <div class="logo">Encipher<span>Food</span></div>
+    <div style="display:flex;align-items:center">
+        <a href="/home">&larr;</a>
+        <span class="logo">EncipherFood</span>
+        <span class="badge" th:text="${userRole}">ADMIN</span>
     </div>
-    <div class="header-right">
-        <span class="role-badge" th:text="${userRole}">ADMIN</span>
-        <span th:text="${todayDisplay}" style="font-size:0.85rem;opacity:0.9">Today</span>
-    </div>
+    <span style="font-size:0.85rem;color:#fff;opacity:0.9" th:text="${todayDisplay}">Today</span>
 </div>
 
 <div class="container">
-    <div class="nav-links">
-        <a href="/admin" class="nav-link active">Dashboard</a>
-        <a href="/admin/menu" class="nav-link">Menu Settings</a>
-        <a href="/admin/employees" class="nav-link" th:classappend="${!isAdministrator} ? 'disabled'">Manage Users</a>
+    <div class="nav">
+        <a href="/admin" class="active">Dashboard</a>
+        <a href="/admin/menu">Menu Settings</a>
+        <a href="/admin/employees" th:style="${isAdministrator} ? '' : 'opacity:0.4;pointer-events:none'">Manage Users</a>
     </div>
     
-    <div id="message" class="message hidden"></div>
+    <div id="msg" class="msg hide"></div>
     
     <div class="tabs">
-        <button class="tab active" onclick="showTab('survey')">Survey (For Vendor)</button>
-        <button class="tab" onclick="showTab('collection')">Collection (Food Day)</button>
-        <button class="tab" onclick="showTab('history')">History / Reports</button>
+        <button class="tab active" onclick="showPanel('survey')">Survey (For Vendor)</button>
+        <button class="tab" onclick="showPanel('collection')">Collection (Food Day)</button>
+        <button class="tab" onclick="showPanel('history')">History / Reports</button>
     </div>
     
-    <!-- ==================== SURVEY TAB ==================== -->
-    <div id="surveyDashboard" class="dashboard-section active">
-        <div class="section">
-            <div class="section-header">
-                <span class="section-title">Food Survey Control</span>
-                <span th:if="${poolOpen}" class="section-badge active">SURVEY OPEN</span>
+    <!-- SURVEY PANEL -->
+    <div id="surveyPanel" class="panel active">
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Food Survey Control</span>
+                <span th:if="${poolOpen}" class="status-badge open">SURVEY OPEN</span>
             </div>
             
-            <div class="pool-control">
-                <div th:if="${!foodAvailable}">
+            <div class="control-box">
+                <!-- Food Not Available -->
+                <div th:if="${foodAvailable == false}">
                     <div class="pool-status unavailable">Food Not Available Today</div>
-                    <p style="color:var(--text-muted);margin:12px 0">Configure menu first</p>
+                    <p style="color:var(--muted);margin:12px 0">Configure menu first</p>
                     <a href="/admin/menu" class="btn btn-primary" style="display:inline-block;text-decoration:none;margin-top:12px">Configure Menu</a>
                 </div>
                 
-                <div th:if="${foodAvailable}">
-                    <div th:if="${poolOpen}">
+                <!-- Food Available -->
+                <div th:if="${foodAvailable == true}">
+                    <!-- Pool Open -->
+                    <div th:if="${poolOpen == true}">
                         <div class="pool-status open">SURVEY IS OPEN</div>
-                        <div class="food-date-box">Food Date: <strong th:text="${surveyFoodDateFormatted}">Tomorrow</strong></div>
-                        <div th:if="${minutesLeft != null}" class="pool-timer">
-                            <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:4px">Closes at <span th:text="${autoCloseTime}"></span></div>
+                        <div class="food-date">Food Date: <strong th:text="${surveyFoodDateFormatted}">Tomorrow</strong></div>
+                        <div th:if="${minutesLeft != null}" class="timer-box">
+                            <div style="font-size:0.8rem;color:var(--muted);margin-bottom:4px">Closes at <span th:text="${autoCloseTime}"></span></div>
                             <span class="time" th:text="${minutesLeft} + ' min'"></span> left
                         </div>
-                        <button class="btn btn-danger" onclick="closePool()" style="margin-top:16px">Stop Survey</button>
+                        <div style="margin-top:16px">
+                            <button class="btn btn-danger" onclick="closePool()">Stop Survey</button>
+                        </div>
                     </div>
                     
-                    <div th:unless="${poolOpen}">
+                    <!-- Pool Closed -->
+                    <div th:if="${poolOpen == false}">
                         <div class="pool-status closed">NO ACTIVE SURVEY</div>
                         <div class="config-row">
                             <label>Duration:</label>
                             <select id="duration">
-                                <option value="1">1 Hour</option><option value="2">2 Hours</option><option value="3">3 Hours</option>
-                                <option value="4">4 Hours</option><option value="6" selected>6 Hours</option><option value="8">8 Hours</option>
-                                <option value="12">12 Hours</option><option value="24">24 Hours</option>
+                                <option value="1">1 Hour</option>
+                                <option value="2">2 Hours</option>
+                                <option value="3">3 Hours</option>
+                                <option value="4">4 Hours</option>
+                                <option value="6" selected>6 Hours</option>
+                                <option value="8">8 Hours</option>
+                                <option value="12">12 Hours</option>
+                                <option value="24">24 Hours</option>
                             </select>
                             <label>Food Date:</label>
-                            <input type="date" id="foodDate" th:value="${#temporals.format(#temporals.createNow().plusDays(1), 'yyyy-MM-dd')}">
+                            <input type="date" id="foodDate" th:value="${tomorrowDate}">
                         </div>
-                        <button class="btn btn-primary" onclick="openPool()" style="margin-top:16px">Start Survey</button>
+                        <div style="margin-top:16px">
+                            <button class="btn btn-primary" onclick="openPool()">Start Survey</button>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
         
-        <!-- Vendor Summary & Participants -->
-        <div th:if="${surveyTotalVoted > 0}" class="section">
-            <div class="section-header">
-                <span class="section-title">Vendor Summary - <span th:text="${surveyFoodDateFormatted}">Date</span></span>
-                <button class="btn btn-success btn-sm export-btn" onclick="exportSurvey()">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    Export
-                </button>
+        <!-- Vendor Summary - Only show if there are votes -->
+        <div th:if="${surveyTotalVoted != null and surveyTotalVoted > 0}" class="card">
+            <div class="card-header">
+                <span class="card-title">Vendor Summary - <span th:text="${surveyFoodDateFormatted}">Date</span></span>
+                <button class="btn btn-success btn-sm" onclick="exportSurvey()">Export</button>
             </div>
             
-            <div class="vendor-summary">
+            <div class="vendor-box">
                 <h3>Order for Vendor</h3>
-                <div class="vendor-row"><span>Vegetarian</span><strong th:text="${surveyVegCount}" style="color:var(--success)">0</strong></div>
-                <div class="vendor-row"><span>Non-Vegetarian</span><strong th:text="${surveyNonvegCount}" style="color:#f97316">0</strong></div>
+                <div class="vendor-row">
+                    <span>Vegetarian</span>
+                    <strong th:text="${surveyVegCount}" style="color:var(--success)">0</strong>
+                </div>
+                <div class="vendor-row">
+                    <span>Non-Vegetarian</span>
+                    <strong th:text="${surveyNonvegCount}" style="color:#f97316">0</strong>
+                </div>
                 <div class="vendor-row" style="border-top:2px solid var(--success);padding-top:16px;margin-top:8px">
                     <span style="font-weight:600">TOTAL</span>
                     <strong th:text="${surveyTotalVoted}" style="color:var(--accent);font-size:1.5rem">0</strong>
                 </div>
             </div>
             
-            <!-- Participants with filter and pagination -->
-            <h4 style="margin:24px 0 12px;color:var(--text-muted)">Participants</h4>
+            <h4 style="margin:24px 0 12px;color:var(--muted)">Participants</h4>
             <div class="filter-row">
-                <input type="text" id="surveySearch" placeholder="Search by name..." onkeyup="filterSurveyList()">
-                <select id="surveyFilter" onchange="filterSurveyList()">
+                <input type="text" id="surveySearch" placeholder="Search by name..." onkeyup="filterSurvey()">
+                <select id="surveyTypeFilter" onchange="filterSurvey()">
                     <option value="all">All</option>
                     <option value="veg">Veg Only</option>
                     <option value="nonveg">Non-Veg Only</option>
                 </select>
             </div>
-            <div class="employee-list" id="surveyList">
+            <div class="list" id="surveyList">
                 <div class="list-header"><span>Name</span><span>Choice</span></div>
                 <div th:each="pool : ${surveyPools}" class="list-item survey-item" 
                      th:data-name="${pool.employeeName}" th:data-type="${pool.foodType}">
@@ -218,93 +233,114 @@
                     <span class="list-badge" th:classappend="${pool.foodType == 'veg'} ? 'veg' : 'nonveg'" 
                           th:text="${pool.foodType == 'veg'} ? 'VEG' : 'NON-VEG'">Choice</span>
                 </div>
-                <div th:if="${surveyTotalVoted == 0}" class="empty-state">No participants yet</div>
+                <div th:if="${#lists.isEmpty(surveyPools)}" class="empty">No participants yet</div>
             </div>
             <div class="pagination" id="surveyPagination"></div>
             
-            <div th:if="${poolOpen}" class="notify-section">
+            <!-- Notifications -->
+            <div th:if="${poolOpen == true}" class="notify-box">
                 <h4>Notifications</h4>
-                <div class="notify-buttons">
+                <div class="notify-btns">
                     <button class="notify-btn" onclick="sendNotify('participate')">Remind to Vote</button>
                     <button class="notify-btn" onclick="sendNotify('lastcall')">Last Call</button>
-                    <button class="notify-btn primary" onclick="showCustomNotify()">Custom</button>
+                    <button class="notify-btn primary" onclick="toggleCustom()">Custom</button>
                 </div>
-                <div id="customNotifyBox" class="hidden" style="margin-top:16px">
-                    <textarea id="customMessage" placeholder="Enter message..." style="width:100%;padding:12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);color:var(--text);min-height:80px;font-family:inherit"></textarea>
-                    <button class="btn btn-primary btn-sm" onclick="sendCustomNotify()" style="margin-top:12px">Send</button>
+                <div id="customBox" class="hide" style="margin-top:16px">
+                    <textarea id="customMsg" placeholder="Enter message..." style="width:100%;padding:12px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);min-height:80px;font-family:inherit"></textarea>
+                    <button class="btn btn-primary btn-sm" onclick="sendCustom()" style="margin-top:12px">Send</button>
                 </div>
             </div>
         </div>
     </div>
     
-    <!-- ==================== COLLECTION TAB ==================== -->
-    <div id="collectionDashboard" class="dashboard-section">
-        <div th:if="${!isFoodCollectionDay}" class="section">
-            <div class="pool-control">
-                <div class="pool-status" style="color:var(--text-muted)">No Food Collection Today</div>
-                <p style="color:var(--text-muted);margin:12px 0">No scheduled food for today.</p>
+    <!-- COLLECTION PANEL -->
+    <div id="collectionPanel" class="panel">
+        <!-- Not a food day -->
+        <div th:if="${isFoodCollectionDay == false}" class="card">
+            <div class="control-box">
+                <div class="pool-status" style="color:var(--muted)">No Food Collection Today</div>
+                <p style="color:var(--muted);margin:12px 0">No scheduled food for today.</p>
             </div>
         </div>
         
-        <div th:if="${isFoodCollectionDay}">
-            <div class="section">
-                <div class="section-header">
-                    <span class="section-title">Today's Collection</span>
+        <!-- Is a food day -->
+        <div th:if="${isFoodCollectionDay == true}">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Today's Collection</span>
                     <div style="display:flex;gap:8px">
-                        <span class="section-badge collection">FOOD DAY</span>
-                        <button class="btn btn-success btn-sm export-btn" onclick="exportCollection()">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                            Export
-                        </button>
+                        <span class="status-badge food">FOOD DAY</span>
+                        <button class="btn btn-success btn-sm" onclick="exportCollection()">Export</button>
                     </div>
                 </div>
                 
-                <div class="stats-row">
-                    <div class="stat-box"><div class="stat-value total" th:text="${collectionTotalVoted}">0</div><div class="stat-label">Expected</div></div>
-                    <div class="stat-box"><div class="stat-value collected" th:text="${collectionCollected}">0</div><div class="stat-label">Collected</div></div>
-                    <div class="stat-box"><div class="stat-value pending" th:text="${collectionTotalVoted - collectionCollected}">0</div><div class="stat-label">Pending</div></div>
-                    <div class="stat-box"><div class="stat-value no-vote" th:text="${collectionWithoutVote}">0</div><div class="stat-label">No Vote</div></div>
+                <div class="stats">
+                    <div class="stat">
+                        <div class="stat-value total" th:text="${collectionTotalVoted}">0</div>
+                        <div class="stat-label">Expected</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value collected" th:text="${collectionCollected}">0</div>
+                        <div class="stat-label">Collected</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value pending" th:text="${collectionTotalVoted - collectionCollected}">0</div>
+                        <div class="stat-label">Pending</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" style="color:var(--danger)" th:text="${collectionWithoutVote}">0</div>
+                        <div class="stat-label">No Vote</div>
+                    </div>
                 </div>
                 
-                <div class="notify-section">
-                    <div class="notify-buttons">
+                <div class="notify-box">
+                    <div class="notify-btns">
                         <button class="notify-btn" onclick="sendNotify('eat')">Food Arrived</button>
-                        <button class="notify-btn primary" onclick="showCustomNotify()">Custom</button>
+                        <button class="notify-btn primary" onclick="toggleCustom()">Custom</button>
                     </div>
                 </div>
             </div>
             
             <div class="two-col">
-                <div class="section">
-                    <div class="section-header"><span class="section-title" style="color:var(--warning)">Collected (<span th:text="${collectionCollected}">0</span>)</span></div>
-                    <div class="filter-row">
-                        <input type="text" placeholder="Search..." onkeyup="filterCollectedList(this)">
+                <!-- Collected -->
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title" style="color:var(--warning)">Collected (<span th:text="${collectionCollected}">0</span>)</span>
                     </div>
-                    <div class="employee-list" id="collectedList" style="max-height:350px;overflow-y:auto">
+                    <div class="filter-row">
+                        <input type="text" placeholder="Search..." onkeyup="filterList(this,'collectedList','collected-item')">
+                    </div>
+                    <div class="list" id="collectedList">
                         <div class="list-header"><span>Name</span><span>Status</span></div>
                         <div th:each="scan : ${collectionScans}" class="list-item collected-item" th:data-name="${scan.employeeName}">
                             <span class="list-name" th:text="${scan.employeeName}">Name</span>
-                            <span class="list-badge" th:classappend="${scan.didVote} ? 'collected' : 'no-vote'" th:text="${scan.didVote} ? 'Voted' : 'No Vote'">Status</span>
+                            <span class="list-badge" th:classappend="${scan.didVote} ? 'yes' : 'no'" 
+                                  th:text="${scan.didVote} ? 'Voted' : 'No Vote'">Status</span>
                         </div>
-                        <div th:if="${#lists.isEmpty(collectionScans)}" class="empty-state">No collections yet</div>
+                        <div th:if="${#lists.isEmpty(collectionScans)}" class="empty">No collections yet</div>
                     </div>
                     <div class="pagination" id="collectedPagination"></div>
                 </div>
                 
-                <div class="section">
-                    <div class="section-header"><span class="section-title" style="color:var(--text-muted)">Pending (<span th:text="${collectionTotalVoted - collectionCollected}">0</span>)</span></div>
-                    <div class="filter-row">
-                        <input type="text" placeholder="Search..." onkeyup="filterPendingList(this)">
+                <!-- Pending -->
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title" style="color:var(--muted)">Pending (<span th:text="${collectionTotalVoted - collectionCollected}">0</span>)</span>
                     </div>
-                    <div class="employee-list" id="pendingList" style="max-height:350px;overflow-y:auto">
+                    <div class="filter-row">
+                        <input type="text" placeholder="Search..." onkeyup="filterList(this,'pendingList','pending-item')">
+                    </div>
+                    <div class="list" id="pendingList">
                         <div class="list-header"><span>Name</span><span>Choice</span></div>
                         <th:block th:each="pool : ${collectionPools}">
-                            <div th:unless="${#lists.contains(collectedEmployeeIds, pool.employeeId)}" class="list-item pending-item" th:data-name="${pool.employeeName}">
+                            <div th:unless="${#lists.contains(collectedEmployeeIds, pool.employeeId)}" 
+                                 class="list-item pending-item" th:data-name="${pool.employeeName}">
                                 <span class="list-name" th:text="${pool.employeeName}">Name</span>
-                                <span class="list-badge" th:classappend="${pool.foodType == 'veg'} ? 'veg' : 'nonveg'" th:text="${pool.foodType == 'veg'} ? 'VEG' : 'NON-VEG'">Choice</span>
+                                <span class="list-badge" th:classappend="${pool.foodType == 'veg'} ? 'veg' : 'nonveg'" 
+                                      th:text="${pool.foodType == 'veg'} ? 'VEG' : 'NON-VEG'">Choice</span>
                             </div>
                         </th:block>
-                        <div th:if="${collectionTotalVoted - collectionCollected <= 0}" class="empty-state">All collected</div>
+                        <div th:if="${collectionTotalVoted - collectionCollected <= 0}" class="empty">All collected</div>
                     </div>
                     <div class="pagination" id="pendingPagination"></div>
                 </div>
@@ -312,10 +348,10 @@
         </div>
     </div>
     
-    <!-- ==================== HISTORY TAB ==================== -->
-    <div id="historyDashboard" class="dashboard-section">
-        <div class="section">
-            <div class="section-header"><span class="section-title">Historical Data</span></div>
+    <!-- HISTORY PANEL -->
+    <div id="historyPanel" class="panel">
+        <div class="card">
+            <div class="card-header"><span class="card-title">Historical Data</span></div>
             
             <div class="date-filter">
                 <div><label>From:</label><input type="date" id="startDate" th:value="${startDate}"></div>
@@ -328,26 +364,47 @@
                 </div>
             </div>
             
-            <div th:if="${report != null && report.foodPoolDays > 0}">
-                <div class="stats-row">
-                    <div class="stat-box"><div class="stat-value total" th:text="${report.foodPoolDays}">0</div><div class="stat-label">Active Days</div></div>
-                    <div class="stat-box"><div class="stat-value veg" th:text="${report.totalVeg}">0</div><div class="stat-label">Veg Votes</div></div>
-                    <div class="stat-box"><div class="stat-value nonveg" th:text="${report.totalNonveg}">0</div><div class="stat-label">Non-Veg</div></div>
-                    <div class="stat-box"><div class="stat-value collected" th:text="${report.totalCollected}">0</div><div class="stat-label">Collected</div></div>
+            <div th:if="${report != null and report.foodPoolDays > 0}">
+                <div class="stats">
+                    <div class="stat">
+                        <div class="stat-value total" th:text="${report.foodPoolDays}">0</div>
+                        <div class="stat-label">Active Days</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value veg" th:text="${report.totalVeg}">0</div>
+                        <div class="stat-label">Veg Votes</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value nonveg" th:text="${report.totalNonveg}">0</div>
+                        <div class="stat-label">Non-Veg</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value collected" th:text="${report.totalCollected}">0</div>
+                        <div class="stat-label">Collected</div>
+                    </div>
                 </div>
                 
-                <h4 style="margin:24px 0 12px;color:var(--text-muted)">Daily Breakdown (Click row to see names)</h4>
+                <h4 style="margin:24px 0 12px;color:var(--muted)">Daily Breakdown (Click row to see names)</h4>
                 <div style="overflow-x:auto;border-radius:8px;border:1px solid var(--border)">
-                    <table class="data-table" id="dailyTable">
-                        <thead><tr><th>Date</th><th>Day</th><th class="number">Veg</th><th class="number">Non-Veg</th><th class="number">Total</th><th class="number">Collected</th></tr></thead>
+                    <table id="dailyTable">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Day</th>
+                                <th class="num">Veg</th>
+                                <th class="num">Non-Veg</th>
+                                <th class="num">Total</th>
+                                <th class="num">Collected</th>
+                            </tr>
+                        </thead>
                         <tbody>
-                            <tr th:each="day : ${report.dailyData}" class="clickable" th:data-date="${day.date}" onclick="showDayDetails(this)">
+                            <tr th:each="day : ${report.dailyData}" class="click daily-row" th:data-date="${day.date}" onclick="showDay(this)">
                                 <td th:text="${day.date}">Date</td>
                                 <td th:text="${day.dateDisplay}">Day</td>
-                                <td class="number" th:text="${day.veg}">0</td>
-                                <td class="number" th:text="${day.nonveg}">0</td>
-                                <td class="number" th:text="${day.totalVoted}">0</td>
-                                <td class="number" th:text="${day.collected}">0</td>
+                                <td class="num" th:text="${day.veg}">0</td>
+                                <td class="num" th:text="${day.nonveg}">0</td>
+                                <td class="num" th:text="${day.totalVoted}">0</td>
+                                <td class="num" th:text="${day.collected}">0</td>
                             </tr>
                         </tbody>
                     </table>
@@ -355,24 +412,21 @@
                 <div class="pagination" id="dailyPagination"></div>
                 
                 <div style="display:flex;justify-content:flex-end;margin-top:16px">
-                    <button class="btn btn-success export-btn" onclick="exportHistory()">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                        Export Excel
-                    </button>
+                    <button class="btn btn-success" onclick="exportHistory()">Export Excel</button>
                 </div>
             </div>
             
-            <div th:if="${report == null || report.foodPoolDays == 0}" class="empty-state">
+            <div th:if="${report == null or report.foodPoolDays == 0}" class="empty">
                 <p>No data. Select dates and click View.</p>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal for day details -->
-<div id="dayModal" class="modal hidden" onclick="if(event.target===this)closeModal()">
-    <div class="modal-content">
-        <div class="modal-header">
+<!-- Modal -->
+<div id="modal" class="modal hide" onclick="if(event.target===this)closeModal()">
+    <div class="modal-box">
+        <div class="modal-head">
             <span class="modal-title" id="modalTitle">Details</span>
             <button class="modal-close" onclick="closeModal()">&times;</button>
         </div>
@@ -380,278 +434,213 @@
     </div>
 </div>
 
-<script th:inline="javascript">
-const ITEMS_PER_PAGE = 10;
-let surveyPage = 1;
-let dailyPage = 1;
-let collectedPage = 1;
-let pendingPage = 1;
+<script>
+const PER_PAGE = 10;
+let pages = {survey:1, collected:1, pending:1, daily:1};
 
-function showTab(tab) {
+function showPanel(name) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.dashboard-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     event.target.classList.add('active');
-    document.getElementById(tab + 'Dashboard').classList.add('active');
+    document.getElementById(name + 'Panel').classList.add('active');
 }
 
-function filterList(input, listId) {
-    const filter = input.value.toLowerCase();
-    const items = document.getElementById(listId).querySelectorAll('.list-item');
-    items.forEach(item => {
-        const name = item.getAttribute('data-name') || '';
-        if (name.toLowerCase().includes(filter)) {
-            item.classList.remove('hidden');
-        } else {
-            item.classList.add('hidden');
-        }
+function showMsg(text, ok) {
+    const m = document.getElementById('msg');
+    m.textContent = text;
+    m.className = 'msg ' + (ok ? 'ok' : 'err');
+    setTimeout(() => m.classList.add('hide'), 4000);
+}
+
+function filterList(input, listId, itemClass) {
+    const f = input.value.toLowerCase();
+    document.querySelectorAll('.' + itemClass).forEach(item => {
+        const n = (item.getAttribute('data-name') || '').toLowerCase();
+        item.classList.toggle('hidden', !n.includes(f));
     });
+    paginate(listId, itemClass);
 }
 
-function filterCollectedList(input) {
-    const filter = input.value.toLowerCase();
-    document.querySelectorAll('.collected-item').forEach(item => {
-        const name = item.getAttribute('data-name') || '';
-        if (name.toLowerCase().includes(filter)) {
-            item.classList.remove('hidden');
-        } else {
-            item.classList.add('hidden');
-        }
-    });
-    collectedPage = 1;
-    paginateList('collectedList', 'collectedPagination', 'collected-item');
-}
-
-function filterPendingList(input) {
-    const filter = input.value.toLowerCase();
-    document.querySelectorAll('.pending-item').forEach(item => {
-        const name = item.getAttribute('data-name') || '';
-        if (name.toLowerCase().includes(filter)) {
-            item.classList.remove('hidden');
-        } else {
-            item.classList.add('hidden');
-        }
-    });
-    pendingPage = 1;
-    paginateList('pendingList', 'pendingPagination', 'pending-item');
-}
-
-function filterSurveyList() {
-    const search = document.getElementById('surveySearch').value.toLowerCase();
-    const typeFilter = document.getElementById('surveyFilter').value;
-    const items = document.querySelectorAll('.survey-item');
-    
-    items.forEach(item => {
-        const name = item.getAttribute('data-name')?.toLowerCase() || '';
+function filterSurvey() {
+    const s = document.getElementById('surveySearch').value.toLowerCase();
+    const t = document.getElementById('surveyTypeFilter').value;
+    document.querySelectorAll('.survey-item').forEach(item => {
+        const n = (item.getAttribute('data-name') || '').toLowerCase();
         const type = item.getAttribute('data-type') || '';
-        const matchSearch = name.includes(search);
-        const matchType = typeFilter === 'all' || type === typeFilter;
-        item.classList.toggle('hidden', !(matchSearch && matchType));
+        const matchS = n.includes(s);
+        const matchT = t === 'all' || type === t;
+        item.classList.toggle('hidden', !(matchS && matchT));
     });
-    
-    paginateList('surveyList', 'surveyPagination', 'survey-item');
+    pages.survey = 1;
+    paginate('surveyList', 'survey-item');
 }
 
-function getPageVar(listId) {
-    if (listId === 'surveyList') return surveyPage;
-    if (listId === 'dailyTable') return dailyPage;
-    if (listId === 'collectedList') return collectedPage;
-    if (listId === 'pendingList') return pendingPage;
-    return 1;
-}
-
-function setPageVar(listId, val) {
-    if (listId === 'surveyList') surveyPage = val;
-    else if (listId === 'dailyTable') dailyPage = val;
-    else if (listId === 'collectedList') collectedPage = val;
-    else if (listId === 'pendingList') pendingPage = val;
-}
-
-function paginateList(listId, paginationId, itemClass) {
+function paginate(listId, itemClass) {
     const items = Array.from(document.querySelectorAll('.' + itemClass + ':not(.hidden)'));
-    const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
-    let currentPage = getPageVar(listId);
-    if (currentPage > totalPages) { currentPage = 1; setPageVar(listId, 1); }
+    const total = Math.ceil(items.length / PER_PAGE) || 1;
+    const key = listId.replace('List','').replace('Table','');
+    let page = pages[key] || 1;
+    if (page > total) { page = 1; pages[key] = 1; }
     
     items.forEach((item, i) => {
-        const page = Math.floor(i / ITEMS_PER_PAGE) + 1;
-        item.style.display = page === currentPage ? '' : 'none';
+        const p = Math.floor(i / PER_PAGE) + 1;
+        item.style.display = p === page ? '' : 'none';
     });
     
-    const pagination = document.getElementById(paginationId);
-    if (!pagination) return;
-    if (totalPages <= 1) {
-        pagination.innerHTML = items.length > 0 ? `<span>Showing ${items.length} items</span>` : '';
+    const pag = document.getElementById(listId.replace('List','Pagination').replace('Table','Pagination'));
+    if (!pag) return;
+    if (total <= 1) {
+        pag.innerHTML = items.length > 0 ? '<span>' + items.length + ' items</span>' : '';
         return;
     }
-    
-    pagination.innerHTML = `
-        <button onclick="changePage('${listId}', '${paginationId}', '${itemClass}', -1)" ${currentPage === 1 ? 'disabled' : ''}>Prev</button>
-        <span>Page ${currentPage} of ${totalPages} (${items.length} items)</span>
-        <button onclick="changePage('${listId}', '${paginationId}', '${itemClass}', 1)" ${currentPage === totalPages ? 'disabled' : ''}>Next</button>
-    `;
+    pag.innerHTML = '<button onclick="changePage(\'' + key + '\',\'' + listId + '\',\'' + itemClass + '\',-1)"' + (page===1?' disabled':'') + '>Prev</button>' +
+        '<span>Page ' + page + ' of ' + total + '</span>' +
+        '<button onclick="changePage(\'' + key + '\',\'' + listId + '\',\'' + itemClass + '\',1)"' + (page===total?' disabled':'') + '>Next</button>';
 }
 
-function changePage(listId, paginationId, itemClass, delta) {
-    let current = getPageVar(listId);
-    setPageVar(listId, current + delta);
-    paginateList(listId, paginationId, itemClass);
+function changePage(key, listId, itemClass, delta) {
+    pages[key] += delta;
+    paginate(listId, itemClass);
 }
 
-function paginateTable(tableId, paginationId) {
-    const rows = Array.from(document.querySelectorAll('#' + tableId + ' tbody tr'));
-    const totalPages = Math.ceil(rows.length / ITEMS_PER_PAGE);
-    let currentPage = getPageVar(tableId);
-    if (currentPage > totalPages) { currentPage = 1; setPageVar(tableId, 1); }
+function paginateTable() {
+    const rows = Array.from(document.querySelectorAll('.daily-row'));
+    const total = Math.ceil(rows.length / PER_PAGE) || 1;
+    let page = pages.daily || 1;
+    if (page > total) { page = 1; pages.daily = 1; }
     
     rows.forEach((row, i) => {
-        const page = Math.floor(i / ITEMS_PER_PAGE) + 1;
-        row.style.display = page === currentPage ? '' : 'none';
+        const p = Math.floor(i / PER_PAGE) + 1;
+        row.style.display = p === page ? '' : 'none';
     });
     
-    const pagination = document.getElementById(paginationId);
-    if (!pagination) return;
-    if (totalPages <= 1) {
-        pagination.innerHTML = rows.length > 0 ? `<span>Showing ${rows.length} days</span>` : '';
+    const pag = document.getElementById('dailyPagination');
+    if (!pag) return;
+    if (total <= 1) {
+        pag.innerHTML = rows.length > 0 ? '<span>' + rows.length + ' days</span>' : '';
         return;
     }
-    
-    pagination.innerHTML = `
-        <button onclick="changeTablePage('${tableId}', '${paginationId}', -1)" ${currentPage === 1 ? 'disabled' : ''}>Prev</button>
-        <span>Page ${currentPage} of ${totalPages} (${rows.length} days)</span>
-        <button onclick="changeTablePage('${tableId}', '${paginationId}', 1)" ${currentPage === totalPages ? 'disabled' : ''}>Next</button>
-    `;
+    pag.innerHTML = '<button onclick="changeTablePage(-1)"' + (page===1?' disabled':'') + '>Prev</button>' +
+        '<span>Page ' + page + ' of ' + total + '</span>' +
+        '<button onclick="changeTablePage(1)"' + (page===total?' disabled':'') + '>Next</button>';
 }
 
-function changeTablePage(tableId, paginationId, delta) {
-    let current = getPageVar(tableId);
-    setPageVar(tableId, current + delta);
-    paginateTable(tableId, paginationId);
+function changeTablePage(delta) {
+    pages.daily += delta;
+    paginateTable();
 }
 
-async function showDayDetails(row) {
+async function showDay(row) {
     const date = row.getAttribute('data-date');
     document.getElementById('modalTitle').textContent = 'Details for ' + date;
-    document.getElementById('modalBody').innerHTML = '<p style="text-align:center;color:var(--text-muted)">Loading...</p>';
-    document.getElementById('dayModal').classList.remove('hidden');
+    document.getElementById('modalBody').innerHTML = '<p style="text-align:center;color:var(--muted)">Loading...</p>';
+    document.getElementById('modal').classList.remove('hide');
     
     try {
         const res = await fetch('/admin/stats/' + date);
         const data = await res.json();
-        
         let html = '';
         
         if (data.pools && data.pools.length > 0) {
             html += '<h4 style="margin-bottom:12px;color:var(--success)">Voted (' + data.pools.length + ')</h4>';
-            html += '<div class="names-list">';
+            html += '<div class="name-list">';
             data.pools.forEach(p => {
-                html += `<div class="name-item"><span>${p.employeeName}</span><span class="list-badge ${p.foodType === 'veg' ? 'veg' : 'nonveg'}">${p.foodType.toUpperCase()}</span></div>`;
+                html += '<div class="name-row"><span>' + p.employeeName + '</span><span class="list-badge ' + (p.foodType==='veg'?'veg':'nonveg') + '">' + p.foodType.toUpperCase() + '</span></div>';
             });
             html += '</div>';
         }
         
         if (data.scans && data.scans.length > 0) {
             html += '<h4 style="margin:20px 0 12px;color:var(--warning)">Collected (' + data.scans.length + ')</h4>';
-            html += '<div class="names-list">';
+            html += '<div class="name-list">';
             data.scans.forEach(s => {
-                html += `<div class="name-item"><span>${s.employeeName}</span><span class="list-badge ${s.didVote ? 'collected' : 'no-vote'}">${s.didVote ? 'Voted' : 'No Vote'}</span></div>`;
+                html += '<div class="name-row"><span>' + s.employeeName + '</span><span class="list-badge ' + (s.didVote?'yes':'no') + '">' + (s.didVote?'Voted':'No Vote') + '</span></div>';
             });
             html += '</div>';
         }
         
-        if (!html) html = '<p style="text-align:center;color:var(--text-muted)">No data for this day</p>';
-        
+        if (!html) html = '<p style="text-align:center;color:var(--muted)">No data</p>';
         document.getElementById('modalBody').innerHTML = html;
     } catch (e) {
-        document.getElementById('modalBody').innerHTML = '<p style="color:var(--danger)">Error loading data</p>';
+        document.getElementById('modalBody').innerHTML = '<p style="color:var(--danger)">Error loading</p>';
     }
 }
 
-function closeModal() {
-    document.getElementById('dayModal').classList.add('hidden');
-}
-
-function showMessage(text, isSuccess) {
-    const msg = document.getElementById('message');
-    msg.textContent = text;
-    msg.className = 'message ' + (isSuccess ? 'success' : 'error');
-    setTimeout(() => msg.classList.add('hidden'), 4000);
-}
+function closeModal() { document.getElementById('modal').classList.add('hide'); }
 
 function setRange(days) {
     const end = new Date();
     const start = new Date();
     start.setDate(end.getDate() - days + 1);
-    document.getElementById('startDate').value = formatDate(start);
-    document.getElementById('endDate').value = formatDate(end);
-    document.querySelectorAll('.quick-btn').forEach(b => b.classList.remove('active'));
-    event.target.classList.add('active');
+    document.getElementById('startDate').value = start.toISOString().split('T')[0];
+    document.getElementById('endDate').value = end.toISOString().split('T')[0];
 }
-
-function formatDate(date) { return date.toISOString().split('T')[0]; }
 
 function loadReport() {
     const s = document.getElementById('startDate').value;
     const e = document.getElementById('endDate').value;
-    if (!s || !e) { showMessage('Select dates', false); return; }
+    if (!s || !e) { showMsg('Select dates', false); return; }
     window.location.href = '/admin?startDate=' + s + '&endDate=' + e + '&tab=history';
 }
 
 function exportHistory() {
     const s = document.getElementById('startDate').value;
     const e = document.getElementById('endDate').value;
-    if (!s || !e) { showMessage('Select dates', false); return; }
+    if (!s || !e) { showMsg('Select dates', false); return; }
     window.location.href = '/admin/reports/export?startDate=' + s + '&endDate=' + e;
 }
 
 async function openPool() {
-    const duration = document.getElementById('duration').value;
-    const foodDate = document.getElementById('foodDate').value;
-    if (!confirm('Start survey for ' + duration + ' hours?\nFood date: ' + foodDate)) return;
+    const dur = document.getElementById('duration').value;
+    const fd = document.getElementById('foodDate').value;
+    if (!fd) { showMsg('Select food date', false); return; }
+    if (!confirm('Start survey for ' + dur + ' hours?\nFood date: ' + fd)) return;
     
-    const res = await fetch('/admin/pool/open', {
-        method: 'POST', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({duration: parseInt(duration), foodDate: foodDate})
-    });
-    const data = await res.json();
-    if (data.success) { showMessage(data.message, true); setTimeout(() => location.reload(), 1500); }
-    else showMessage(data.error, false);
+    try {
+        const res = await fetch('/admin/pool/open', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({duration: parseInt(dur), foodDate: fd})
+        });
+        const data = await res.json();
+        if (data.success) { showMsg(data.message, true); setTimeout(() => location.reload(), 1500); }
+        else showMsg(data.error || 'Failed', false);
+    } catch (e) { showMsg('Error: ' + e.message, false); }
 }
 
 async function closePool() {
     if (!confirm('Close survey?')) return;
-    const res = await fetch('/admin/pool/close', {method: 'POST'});
-    const data = await res.json();
-    if (data.success) location.reload();
-    else showMessage(data.error, false);
+    try {
+        const res = await fetch('/admin/pool/close', {method: 'POST'});
+        const data = await res.json();
+        if (data.success) location.reload();
+        else showMsg(data.error || 'Failed', false);
+    } catch (e) { showMsg('Error: ' + e.message, false); }
 }
 
 async function sendNotify(type) {
-    const btn = event.target;
-    btn.disabled = true;
-    const orig = btn.textContent;
-    btn.textContent = 'Sending...';
     try {
         const res = await fetch('/admin/notify/' + type, {method: 'POST'});
         const data = await res.json();
-        showMessage(data.message || data.error, data.success);
-    } catch (e) { showMessage('Failed', false); }
-    finally { btn.disabled = false; btn.textContent = orig; }
+        showMsg(data.message || data.error, data.success);
+    } catch (e) { showMsg('Failed', false); }
 }
 
-function showCustomNotify() { document.getElementById('customNotifyBox').classList.toggle('hidden'); }
+function toggleCustom() { document.getElementById('customBox').classList.toggle('hide'); }
 
-async function sendCustomNotify() {
-    const msg = document.getElementById('customMessage').value.trim();
-    if (!msg) { showMessage('Enter message', false); return; }
+async function sendCustom() {
+    const msg = document.getElementById('customMsg').value.trim();
+    if (!msg) { showMsg('Enter message', false); return; }
     try {
         const res = await fetch('/admin/notify/custom', {
-            method: 'POST', headers: {'Content-Type': 'application/json'},
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({message: msg})
         });
         const data = await res.json();
-        showMessage(data.message || data.error, data.success);
-        if (data.success) { document.getElementById('customMessage').value = ''; document.getElementById('customNotifyBox').classList.add('hidden'); }
-    } catch (e) { showMessage('Failed', false); }
+        showMsg(data.message || data.error, data.success);
+        if (data.success) { document.getElementById('customMsg').value = ''; document.getElementById('customBox').classList.add('hide'); }
+    } catch (e) { showMsg('Failed', false); }
 }
 
 function exportSurvey() { window.location.href = '/admin/export/survey'; }
@@ -659,24 +648,24 @@ function exportCollection() { window.location.href = '/admin/export/collection';
 
 // Init
 document.addEventListener('DOMContentLoaded', function() {
-    // Tab from URL
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('tab') === 'history') {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('tab') === 'history') {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.dashboard-section').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
         document.querySelectorAll('.tab')[2].classList.add('active');
-        document.getElementById('historyDashboard').classList.add('active');
+        document.getElementById('historyPanel').classList.add('active');
     }
     
-    // Init pagination for all lists
-    paginateList('surveyList', 'surveyPagination', 'survey-item');
-    paginateList('collectedList', 'collectedPagination', 'collected-item');
-    paginateList('pendingList', 'pendingPagination', 'pending-item');
-    paginateTable('dailyTable', 'dailyPagination');
+    paginate('surveyList', 'survey-item');
+    paginate('collectedList', 'collected-item');
+    paginate('pendingList', 'pending-item');
+    paginateTable();
 });
 
-// Auto-refresh
-if (document.querySelector('.section-badge.active')) { setTimeout(() => location.reload(), 60000); }
+// Auto refresh if pool open
+if (document.querySelector('.status-badge.open')) {
+    setTimeout(() => location.reload(), 60000);
+}
 </script>
 </body>
 </html>
