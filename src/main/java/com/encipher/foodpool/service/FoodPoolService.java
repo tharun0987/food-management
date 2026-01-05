@@ -41,9 +41,10 @@ public class FoodPoolService {
     /**
      * Find the survey config where food date is the given date
      * This tells us which survey created food for this date
+     * Uses findFirst to handle duplicates gracefully
      */
     public Optional<MenuConfig> getSurveyForFoodDate(LocalDate foodDate) {
-        return menuConfigRepository.findByFoodDate(foodDate);
+        return menuConfigRepository.findFirstByFoodDateOrderByDateDesc(foodDate);
     }
     
     public boolean isPoolOpen() {

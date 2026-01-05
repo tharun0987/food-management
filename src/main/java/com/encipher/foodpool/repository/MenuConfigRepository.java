@@ -5,6 +5,7 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -12,6 +13,9 @@ public interface MenuConfigRepository extends MongoRepository<MenuConfig, String
     // Find by survey date (the date menu config was created)
     Optional<MenuConfig> findByDate(LocalDate date);
     
-    // Find by food date (when food will be served)
-    Optional<MenuConfig> findByFoodDate(LocalDate foodDate);
+    // Find by food date (when food will be served) - returns List to handle duplicates
+    List<MenuConfig> findByFoodDateOrderByDateDesc(LocalDate foodDate);
+    
+    // Find first by food date
+    Optional<MenuConfig> findFirstByFoodDateOrderByDateDesc(LocalDate foodDate);
 }
