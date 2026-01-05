@@ -369,38 +369,42 @@
                 </div>
             </div>
             
-            <div id="analyticsContent" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;margin-top:20px">
-                <div class="card" style="margin:0">
-                    <h4 style="margin-bottom:16px;color:var(--muted)">Pool Days vs Collection Days</h4>
-                    <canvas id="daysChart"></canvas>
+            <!-- Summary Stats -->
+            <div id="analyticsStats" class="stats" style="margin-top:20px">
+                <div class="stat">
+                    <div class="stat-value total" id="statTotalVoted">-</div>
+                    <div class="stat-label">Total Voted</div>
                 </div>
-                <div class="card" style="margin:0">
-                    <h4 style="margin-bottom:16px;color:var(--muted)">Food Preference Distribution</h4>
-                    <canvas id="foodChart"></canvas>
+                <div class="stat">
+                    <div class="stat-value collected" id="statTotalCollected">-</div>
+                    <div class="stat-label">Total Collected</div>
                 </div>
-                <div class="card" style="margin:0">
-                    <h4 style="margin-bottom:16px;color:var(--muted)">Collection Status</h4>
-                    <canvas id="collectionChart"></canvas>
+                <div class="stat">
+                    <div class="stat-value veg" id="statVeg">-</div>
+                    <div class="stat-label">Veg Votes</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value nonveg" id="statNonveg">-</div>
+                    <div class="stat-label">Non-Veg Votes</div>
                 </div>
             </div>
             
-            <h4 style="margin:24px 0 12px;color:var(--muted)">Daily Breakdown</h4>
-            <div style="overflow-x:auto;border-radius:8px;border:1px solid var(--border)">
-                <table id="dailyTable">
-                    <thead>
-                        <tr><th>Date</th><th>Day</th><th class="num">Veg</th><th class="num">Non-Veg</th><th class="num">Total</th><th class="num">Collected</th></tr>
-                    </thead>
-                    <tbody>
-                        <tr th:each="day : ${report.dailyData}" class="click daily-row" th:data-date="${day.date}" onclick="showDay(this)">
-                            <td th:text="${day.date}">Date</td><td th:text="${day.dateDisplay}">Day</td>
-                            <td class="num" th:text="${day.veg}">0</td><td class="num" th:text="${day.nonveg}">0</td>
-                            <td class="num" th:text="${day.totalVoted}">0</td><td class="num" th:text="${day.collected}">0</td>
-                        </tr>
-                    </tbody>
-                </table>
+            <div id="analyticsContent" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;margin-top:20px">
+                <div class="card" style="margin:0">
+                    <h4 style="margin-bottom:16px;color:var(--muted)">Voted vs Not Voted (Collected)</h4>
+                    <canvas id="votedChart"></canvas>
+                </div>
+                <div class="card" style="margin:0">
+                    <h4 style="margin-bottom:16px;color:var(--muted)">Collected vs Not Collected (Voters)</h4>
+                    <canvas id="collectedChart"></canvas>
+                </div>
+                <div class="card" style="margin:0">
+                    <h4 style="margin-bottom:16px;color:var(--muted)">Food Preference</h4>
+                    <canvas id="foodChart"></canvas>
+                </div>
             </div>
-            <div class="pagination" id="dailyPagination"></div>
-            <div style="display:flex;justify-content:flex-end;margin-top:16px">
+            
+            <div style="display:flex;justify-content:flex-end;margin-top:20px">
                 <button class="btn btn-success" onclick="exportHistory()">Export Excel</button>
             </div>
         </div>
@@ -467,7 +471,7 @@
     <!-- AUDIT TRAIL PANEL -->
     <div id="auditPanel" class="panel">
         <div class="card">
-            <div class="card-header"><span class="card-title">Audit Trail</span></div>
+            <div class="card-header"><span class="card-title">Admin Activity Log</span></div>
             <div class="filter-row">
                 <input type="date" id="auditStart" th:value="${startDate}">
                 <input type="date" id="auditEnd" th:value="${endDate}">
@@ -476,22 +480,14 @@
                     <option value="POOL_STARTED">Pool Started</option>
                     <option value="POOL_CLOSED_MANUAL">Pool Closed (Manual)</option>
                     <option value="POOL_CLOSED_AUTO">Pool Closed (Auto)</option>
-                    <option value="ROLE_CHANGE">Role Change</option>
-                    <option value="QR_GENERATED">QR Generated</option>
+                    <option value="ROLE_CHANGE">Role Changed</option>
                     <option value="GRACE_REQUEST_APPROVED">Grace Approved</option>
                     <option value="GRACE_REQUEST_REJECTED">Grace Rejected</option>
                 </select>
                 <button class="btn btn-primary btn-sm" onclick="loadAudit()">Load</button>
             </div>
-            <div style="overflow-x:auto;border-radius:8px;border:1px solid var(--border);margin-top:16px">
-                <table id="auditTable">
-                    <thead>
-                        <tr><th>Time</th><th>Action</th><th>Actor</th><th>Target</th><th>Details</th></tr>
-                    </thead>
-                    <tbody id="auditBody">
-                        <tr><td colspan="5" class="empty">Select dates and click Load</td></tr>
-                    </tbody>
-                </table>
+            <div class="list" id="auditList" style="margin-top:16px;max-height:600px">
+                <div class="empty" id="auditEmpty">Select dates and click Load</div>
             </div>
             <div class="pagination" id="auditPagination"></div>
         </div>
@@ -747,49 +743,68 @@ async function loadAnalytics() {
         
         if (data.error) { showMsg(data.error, false); return; }
         
+        // Update stats
+        document.getElementById('statTotalVoted').textContent = data.totalVoted || 0;
+        document.getElementById('statTotalCollected').textContent = data.totalCollected || 0;
+        document.getElementById('statVeg').textContent = data.vegVotes || 0;
+        document.getElementById('statNonveg').textContent = data.nonvegVotes || 0;
+        
         // Destroy old charts
         Object.values(charts).forEach(c => c.destroy());
+        charts = {};
         
-        // Days Chart
-        charts.days = new Chart(document.getElementById('daysChart'), {
+        const chartOptions = { 
+            responsive: true, 
+            plugins: { 
+                legend: { position: 'bottom', labels: { color: '#9ca3af', padding: 12 } } 
+            } 
+        };
+        
+        // Chart 1: Voted vs Not Voted (among those who collected)
+        const collectedWithVote = data.collectedWithVote || 0;
+        const collectedWithoutVote = data.collectedWithoutVote || 0;
+        charts.voted = new Chart(document.getElementById('votedChart'), {
             type: 'pie',
             data: {
-                labels: ['Pool Days', 'Collection Days'],
+                labels: ['Collected + Voted', 'Collected (No Vote)'],
                 datasets: [{
-                    data: [data.poolDays, data.collectionDays],
-                    backgroundColor: ['#0891b2', '#f59e0b']
+                    data: [collectedWithVote, collectedWithoutVote],
+                    backgroundColor: ['#10b981', '#ef4444']
                 }]
             },
-            options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#9ca3af' } } } }
+            options: chartOptions
         });
         
-        // Food Chart
+        // Chart 2: Collected vs Not Collected (among voters)
+        const totalVoted = data.totalVoted || 0;
+        const votedAndCollected = collectedWithVote;
+        const votedNotCollected = totalVoted - votedAndCollected;
+        charts.collected = new Chart(document.getElementById('collectedChart'), {
+            type: 'pie',
+            data: {
+                labels: ['Voted + Collected', 'Voted (Not Collected)'],
+                datasets: [{
+                    data: [votedAndCollected, Math.max(0, votedNotCollected)],
+                    backgroundColor: ['#06b6d4', '#f59e0b']
+                }]
+            },
+            options: chartOptions
+        });
+        
+        // Chart 3: Veg vs Non-Veg
         charts.food = new Chart(document.getElementById('foodChart'), {
             type: 'pie',
             data: {
                 labels: ['Vegetarian', 'Non-Vegetarian'],
                 datasets: [{
-                    data: [data.vegVotes, data.nonvegVotes],
+                    data: [data.vegVotes || 0, data.nonvegVotes || 0],
                     backgroundColor: ['#10b981', '#f97316']
                 }]
             },
-            options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#9ca3af' } } } }
+            options: chartOptions
         });
         
-        // Collection Chart
-        charts.collection = new Chart(document.getElementById('collectionChart'), {
-            type: 'pie',
-            data: {
-                labels: ['Collected (Voted)', 'Collected (No Vote)'],
-                datasets: [{
-                    data: [data.collectedWithVote, data.collectedWithoutVote],
-                    backgroundColor: ['#06b6d4', '#ef4444']
-                }]
-            },
-            options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#9ca3af' } } } }
-        });
-        
-        showMsg('Analytics loaded', true);
+        showMsg('Analytics loaded for ' + start + ' to ' + end, true);
     } catch (e) { showMsg('Error: ' + e.message, false); }
 }
 
@@ -927,23 +942,96 @@ async function loadAudit() {
         const res = await fetch(url);
         const logs = await res.json();
         
-        const body = document.getElementById('auditBody');
-        body.innerHTML = '';
+        const list = document.getElementById('auditList');
+        const empty = document.getElementById('auditEmpty');
+        
+        // Clear old items
+        list.querySelectorAll('.audit-item').forEach(i => i.remove());
         
         if (logs.length === 0) {
-            body.innerHTML = '<tr><td colspan="5" class="empty">No audit logs found</td></tr>';
+            empty.textContent = 'No activity found for this period';
+            empty.classList.remove('hide');
         } else {
+            empty.classList.add('hide');
             logs.forEach(log => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = '<td>' + new Date(log.timestamp).toLocaleString() + '</td>' +
-                    '<td><span class="list-badge" style="background:rgba(8,145,178,0.15);color:var(--accent)">' + log.action + '</span></td>' +
-                    '<td>' + (log.actorName || log.actorEmail) + (log.isAutomatic ? ' <small>(auto)</small>' : '') + '</td>' +
-                    '<td>' + (log.targetName || log.targetEntity || '-') + '</td>' +
-                    '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">' + (log.details || '-') + '</td>';
-                body.appendChild(tr);
+                const item = document.createElement('div');
+                item.className = 'audit-item';
+                item.style.cssText = 'padding:16px 20px;border-bottom:1px solid var(--border);';
+                
+                // Format the action nicely
+                let actionText = formatAuditAction(log);
+                let actionColor = getActionColor(log.action);
+                
+                const time = new Date(log.timestamp).toLocaleString();
+                
+                item.innerHTML = `
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+                        <div>
+                            <span class="list-badge" style="background:${actionColor}15;color:${actionColor};margin-bottom:8px;display:inline-block">${getActionLabel(log.action)}</span>
+                            <div style="font-size:0.95rem;line-height:1.5">${actionText}</div>
+                        </div>
+                        <div style="font-size:0.75rem;color:var(--muted);white-space:nowrap">${time}</div>
+                    </div>
+                `;
+                list.appendChild(item);
             });
         }
+        
+        showMsg('Loaded ' + logs.length + ' activities', true);
     } catch (e) { showMsg('Error: ' + e.message, false); }
+}
+
+function formatAuditAction(log) {
+    const actor = log.actorName || log.actorEmail || 'System';
+    const target = log.targetName || log.targetEntity || '';
+    const details = log.details || '';
+    
+    switch(log.action) {
+        case 'POOL_STARTED':
+            return `<strong>${actor}</strong> started the food pool` + 
+                   (target ? ` for <strong>${target}</strong>` : '');
+        case 'POOL_CLOSED_MANUAL':
+            return `<strong>${actor}</strong> manually closed the food pool` +
+                   (target ? ` for ${target}` : '');
+        case 'POOL_CLOSED_AUTO':
+            return `Food pool was <strong>automatically closed</strong>` +
+                   (target ? ` for ${target}` : '') + ` (timer expired)`;
+        case 'ROLE_CHANGE':
+            return `<strong>${actor}</strong> changed role of <strong>${target}</strong>` +
+                   (log.oldValue && log.newValue ? ` from ${log.oldValue} to <strong>${log.newValue}</strong>` : '');
+        case 'GRACE_REQUEST_APPROVED':
+            return `<strong>${actor}</strong> approved grace request from <strong>${target}</strong>`;
+        case 'GRACE_REQUEST_REJECTED':
+            return `<strong>${actor}</strong> rejected grace request from <strong>${target}</strong>`;
+        case 'QR_GENERATED':
+            return `<strong>${actor}</strong> generated QR code` +
+                   (target ? ` for ${target}` : '');
+        default:
+            return `<strong>${actor}</strong> performed ${log.action}` + (target ? ` on ${target}` : '') +
+                   (details ? ` - ${details}` : '');
+    }
+}
+
+function getActionLabel(action) {
+    const labels = {
+        'POOL_STARTED': 'Pool Started',
+        'POOL_CLOSED_MANUAL': 'Pool Closed',
+        'POOL_CLOSED_AUTO': 'Auto Closed',
+        'ROLE_CHANGE': 'Role Changed',
+        'GRACE_REQUEST_APPROVED': 'Grace Approved',
+        'GRACE_APPROVED': 'Grace Approved',
+        'GRACE_REQUEST_REJECTED': 'Grace Rejected',
+        'GRACE_REJECTED': 'Grace Rejected',
+        'QR_GENERATED': 'QR Generated'
+    };
+    return labels[action] || action;
+}
+
+function getActionColor(action) {
+    if (action.includes('STARTED') || action.includes('APPROVED')) return '#10b981';
+    if (action.includes('CLOSED') || action.includes('REJECTED')) return '#f59e0b';
+    if (action.includes('ROLE')) return '#0891b2';
+    return '#9ca3af';
 }
 
 function exportHistory() {
@@ -971,14 +1059,13 @@ document.addEventListener('DOMContentLoaded', function() {
     paginate('surveyList', 'survey-item');
     paginate('collectedList', 'collected-item');
     paginate('pendingList', 'pending-item');
-    paginateTable();
     
     // Load QR codes and grace requests
     loadQrList();
     loadGraceRequests();
     
     // Initialize analytics with default data
-    if (document.getElementById('daysChart')) {
+    if (document.getElementById('votedChart')) {
         loadAnalytics();
     }
 });

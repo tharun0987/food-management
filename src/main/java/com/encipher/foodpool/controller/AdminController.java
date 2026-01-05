@@ -1111,12 +1111,12 @@ public class AdminController {
             Map<String, Object> analytics = new HashMap<>();
             analytics.put("poolDays", poolDates.size());
             analytics.put("collectionDays", collectionDates.size());
-            analytics.put("totalVotes", allPools.size());
+            analytics.put("totalVoted", allPools.size());  // Total people who voted
             analytics.put("vegVotes", vegVotes);
             analytics.put("nonvegVotes", nonvegVotes);
-            analytics.put("totalCollected", allScans.size());
-            analytics.put("collectedWithVote", collectedWithVote);
-            analytics.put("collectedWithoutVote", collectedWithoutVote);
+            analytics.put("totalCollected", allScans.size());  // Total people who collected
+            analytics.put("collectedWithVote", collectedWithVote);  // Collected AND voted
+            analytics.put("collectedWithoutVote", collectedWithoutVote);  // Collected but didn't vote
             analytics.put("dateRange", Map.of(
                 "start", start.format(DateTimeFormatter.ofPattern("MMM dd, yyyy")),
                 "end", end.format(DateTimeFormatter.ofPattern("MMM dd, yyyy"))
