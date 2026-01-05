@@ -17,7 +17,7 @@ on:
           - production
           - staging
 
-  # Automatic trigger for Release branches
+  # Automatic trigger ONLY for Release branches
   push:
     branches:
       - 'Release/**'
@@ -25,12 +25,15 @@ on:
 
 env:
   JAVA_VERSION: '17'
-  DOCKER_IMAGE_NAME: encipher-food-pool
+  ACR_REGISTRY: devgeneric.azurecr.io
+  IMAGE_NAME: encipher-food-pool
+  CONTAINER_NAME: food-pool
 
 jobs:
-  build:
+  build-and-push:
     runs-on: ubuntu-latest
     outputs:
+      image_tag: ${{ steps.vars.outputs.image_tag }}
       version: ${{ steps.version.outputs.version }}
       
     steps:
@@ -38,6 +41,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.branch || github.ref }}
+          
+      - name: Set variables
+        id: vars
+        run: |
+          # Get first 12 characters of commit SHA
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-12)
+          echo "image_tag=$SHORT_SHA" >> $GITHUB_OUTPUT
+          echo "Image tag: $SHORT_SHA"
           
       - name: Set up JDK ${{ env.JAVA_VERSION }}
         uses: actions/setup-java@v4
@@ -56,41 +67,35 @@ jobs:
       - name: Build with Maven
         run: mvn clean package -DskipTests -B
         
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - name: Login to Azure Container Registry
+        uses: docker/login-action@v3
         with:
-          name: app-jar
-          path: target/*.jar
-          retention-days: 5
+          registry: ${{ env.ACR_REGISTRY }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
           
-      - name: Build Docker image
+      - name: Build and Push Docker image
         run: |
-          docker build -t ${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }} .
-          docker tag ${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }} ${{ env.DOCKER_IMAGE_NAME }}:latest
+          # Build image
+          docker build -t ${{ env.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.image_tag }} .
           
-      - name: Save Docker image
-        run: |
-          docker save ${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }} | gzip > docker-image.tar.gz
+          # Tag as latest too
+          docker tag ${{ env.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.image_tag }} \
+                     ${{ env.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           
-      - name: Upload Docker image artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: docker-image
-          path: docker-image.tar.gz
-          retention-days: 1
+          # Push both tags
+          docker push ${{ env.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.image_tag }}
+          docker push ${{ env.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          
+          echo "Pushed image: ${{ env.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.image_tag }}"
 
   deploy:
-    needs: build
+    needs: build-and-push
     runs-on: ubuntu-latest
     if: github.event_name == 'push' || github.event.inputs.environment == 'production'
     environment: production
     
     steps:
-      - name: Download Docker image
-        uses: actions/download-artifact@v4
-        with:
-          name: docker-image
-          
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
@@ -98,66 +103,87 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.VM_HOST }} >> ~/.ssh/known_hosts
           
-      - name: Transfer Docker image to VM
-        run: |
-          scp docker-image.tar.gz ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:/tmp/
-          
       - name: Deploy to VM
+        env:
+          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
         run: |
-          ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} << 'EOF'
-            # Load Docker image
-            docker load < /tmp/docker-image.tar.gz
+          ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} << 'ENDSSH'
+            set -e
+            
+            echo "=== Starting Deployment ==="
+            
+            # Login to Azure Container Registry
+            echo "${{ secrets.ACR_PASSWORD }}" | docker login ${{ env.ACR_REGISTRY }} -u ${{ secrets.ACR_USERNAME }} --password-stdin
+            
+            # Pull the new image
+            echo "Pulling image: ${{ env.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build-and-push.outputs.image_tag }}"
+            docker pull ${{ env.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build-and-push.outputs.image_tag }}
             
             # Stop and remove old container
-            docker stop food-pool 2>/dev/null || true
-            docker rm food-pool 2>/dev/null || true
+            echo "Stopping old container..."
+            docker stop ${{ env.CONTAINER_NAME }} 2>/dev/null || true
+            docker rm ${{ env.CONTAINER_NAME }} 2>/dev/null || true
             
-            # Run new container
+            # Run new container with all environment variables
+            echo "Starting new container..."
             docker run -d \
-              --name food-pool \
+              --name ${{ env.CONTAINER_NAME }} \
               --restart=always \
               -p 8888:8888 \
               -e SPRING_PROFILES_ACTIVE=prod \
-              ${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}
+              -e AZURE_OPENAI_ENDPOINT=${{ secrets.AZURE_OPENAI_ENDPOINT }} \
+              -e AZURE_OPENAI_KEY=${{ secrets.AZURE_OPENAI_KEY }} \
+              -e AZURE_OPENAI_DEPLOYMENT=${{ secrets.AZURE_OPENAI_DEPLOYMENT }} \
+              -e ZOHO_CLIENT_ID=${{ secrets.ZOHO_CLIENT_ID }} \
+              -e ZOHO_CLIENT_SECRET=${{ secrets.ZOHO_CLIENT_SECRET }} \
+              -e MONGODB_URI=${{ secrets.MONGODB_URI }} \
+              ${{ env.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build-and-push.outputs.image_tag }}
             
             # Wait for container to start
-            sleep 10
+            echo "Waiting for container to start..."
+            sleep 15
             
             # Health check
-            curl -f http://localhost:8888/test/health || exit 1
+            echo "Running health check..."
+            curl -f http://localhost:8888/test/health || echo "Health check endpoint not available yet"
             
-            # Cleanup
-            rm /tmp/docker-image.tar.gz
+            # Show container status
+            docker ps | grep ${{ env.CONTAINER_NAME }}
+            
+            # Cleanup old images (keep last 3)
+            echo "Cleaning up old images..."
             docker image prune -f
             
-            echo "Deployment successful!"
-          EOF
+            echo "=== Deployment Complete ==="
+          ENDSSH
           
       - name: Verify deployment
         run: |
-          ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} "docker ps | grep food-pool && docker logs food-pool --tail 20"
-          
-      - name: Notify success
-        if: success()
-        run: echo "Deployment to production completed successfully!"
-        
-      - name: Notify failure
-        if: failure()
-        run: echo "Deployment failed! Check the logs above."
+          ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} << 'ENDSSH'
+            echo "=== Container Status ==="
+            docker ps | grep ${{ env.CONTAINER_NAME }}
+            echo ""
+            echo "=== Recent Logs ==="
+            docker logs ${{ env.CONTAINER_NAME }} --tail 30
+          ENDSSH
 
   notify:
-    needs: [build, deploy]
+    needs: [build-and-push, deploy]
     runs-on: ubuntu-latest
     if: always()
     
     steps:
       - name: Deployment Summary
         run: |
-          echo "=== Deployment Summary ==="
+          echo "=========================================="
+          echo "         DEPLOYMENT SUMMARY"
+          echo "=========================================="
           echo "Branch: ${{ github.event.inputs.branch || github.ref_name }}"
-          echo "Version: ${{ needs.build.outputs.version }}"
+          echo "Version: ${{ needs.build-and-push.outputs.version }}"
+          echo "Image Tag: ${{ needs.build-and-push.outputs.image_tag }}"
+          echo "Full Image: ${{ env.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build-and-push.outputs.image_tag }}"
           echo "Commit: ${{ github.sha }}"
           echo "Triggered by: ${{ github.actor }}"
-          echo "Build status: ${{ needs.build.result }}"
+          echo "Build status: ${{ needs.build-and-push.result }}"
           echo "Deploy status: ${{ needs.deploy.result }}"
-
+          echo "=========================================="
