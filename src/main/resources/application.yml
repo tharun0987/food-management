@@ -7,16 +7,16 @@ spring:
   
   data:
     mongodb:
-      uri: mongodb+srv://tharun_db_user:XplRhL6HZNdfwRol@encipherfoodmanagement.lpwcfvq.mongodb.net/food_management?retryWrites=true&w=majority
-      database: food_management
+      uri: ${MONGODB_URI}
+      database: ${MONGODB_DATABASE:food_management}
   
   security:
     oauth2:
       client:
         registration:
           zoho:
-            client-id: ${ZOHO_CLIENT_ID:1000.V7Y8R94HK9C4BIC8PW9PL0XWLJTTCP}
-            client-secret: ${ZOHO_CLIENT_SECRET:22aa87c8c7ec7967871f901a903e6d03588a80cf6f}
+            client-id: ${ZOHO_CLIENT_ID}
+            client-secret: ${ZOHO_CLIENT_SECRET}
             scope: AaaServer.profile.READ,email
             authorization-grant-type: authorization_code
             redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
@@ -33,23 +33,20 @@ spring:
     prefix: classpath:/templates/
     suffix: .html
 
-# App configuration
+# App configuration (all sensitive data via environment variables)
 app:
-  admin-emails: admin@encipherhealth.com,hr@encipherhealth.com
-  base-url: https://food.management.encipherhealth.com
+  admin-emails: ${ADMIN_EMAILS:admin@encipherhealth.com}
+  base-url: ${APP_BASE_URL:https://food.management.encipherhealth.com}
   cliq:
-    # Zoho Cliq Bot - Incoming Webhook with token (for sending notifications to users)
-    webhook-url: https://cliq.zoho.in/api/v2/bots/encipherfoodbot/incoming?zapikey=1001.5bef4160d61ffb8976101e391be69479.8fc6d8c621366629a5cf4776eeb13469
-    # Zoho Cliq Bot - Message API (alternative endpoint)
-    bot-message-url: https://cliq.zoho.in/api/v2/bots/encipherfoodbot/message?zapikey=1001.5bef4160d61ffb8976101e391be69479.8fc6d8c621366629a5cf4776eeb13469
-  # Azure OpenAI Configuration (set via environment variables)
+    webhook-url: ${CLIQ_WEBHOOK_URL}
+    bot-message-url: ${CLIQ_BOT_MESSAGE_URL}
   azure-openai:
-    endpoint: ${AZURE_OPENAI_ENDPOINT:https://eh-eastus-2-foundary.cognitiveservices.azure.com}
-    api-key: ${AZURE_OPENAI_KEY:}
+    endpoint: ${AZURE_OPENAI_ENDPOINT}
+    api-key: ${AZURE_OPENAI_KEY}
     deployment-name: ${AZURE_OPENAI_DEPLOYMENT:gpt-4o}
     api-version: ${AZURE_OPENAI_API_VERSION:2025-04-01-preview}
 
 logging:
   level:
-    org.springframework.security: DEBUG
-    com.encipher: DEBUG
+    org.springframework.security: ${LOG_LEVEL_SECURITY:INFO}
+    com.encipher: ${LOG_LEVEL_APP:INFO}
