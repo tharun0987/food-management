@@ -135,7 +135,6 @@ jobs:
               -e AZURE_OPENAI_ENDPOINT="${{ secrets.AZURE_OPENAI_ENDPOINT }}" \
               -e AZURE_OPENAI_KEY="${{ secrets.AZURE_OPENAI_KEY }}" \
               -e AZURE_OPENAI_DEPLOYMENT="${{ secrets.AZURE_OPENAI_DEPLOYMENT }}" \
-              -e ADMIN_EMAILS="${{ secrets.ADMIN_EMAILS }}" \
               -e APP_BASE_URL="${{ secrets.APP_BASE_URL }}" \
               ${{ env.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build-and-push.outputs.image_tag }}
             

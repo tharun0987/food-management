@@ -35,7 +35,6 @@ spring:
 
 # App configuration (all sensitive data via environment variables)
 app:
-  admin-emails: ${ADMIN_EMAILS:admin@encipherhealth.com}
   base-url: ${APP_BASE_URL:https://food.management.encipherhealth.com}
   cliq:
     webhook-url: ${CLIQ_WEBHOOK_URL}
