@@ -1,3 +1,4 @@
+com/encipher/foodpool/service/AiChatService.class
 com/encipher/foodpool/repository/MenuConfigRepository.class
 com/encipher/foodpool/model/MenuConfig.class
 com/encipher/foodpool/repository/GraceRequestRepository.class

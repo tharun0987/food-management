@@ -42,6 +42,12 @@ app:
     webhook-url: https://cliq.zoho.in/api/v2/bots/encipherfoodbot/incoming?zapikey=1001.5bef4160d61ffb8976101e391be69479.8fc6d8c621366629a5cf4776eeb13469
     # Zoho Cliq Bot - Message API (alternative endpoint)
     bot-message-url: https://cliq.zoho.in/api/v2/bots/encipherfoodbot/message?zapikey=1001.5bef4160d61ffb8976101e391be69479.8fc6d8c621366629a5cf4776eeb13469
+  # Azure OpenAI Configuration (set via environment variables)
+  azure-openai:
+    endpoint: ${AZURE_OPENAI_ENDPOINT:https://eh-eastus-2-foundary.cognitiveservices.azure.com}
+    api-key: ${AZURE_OPENAI_KEY:}
+    deployment-name: ${AZURE_OPENAI_DEPLOYMENT:gpt-4o}
+    api-version: ${AZURE_OPENAI_API_VERSION:2025-04-01-preview}
 
 logging:
   level:

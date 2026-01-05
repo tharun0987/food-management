@@ -7,6 +7,7 @@
 /Users/apple/encipher-projects/employee-food-management/src/main/java/com/encipher/foodpool/controller/ApiController.java
 /Users/apple/encipher-projects/employee-food-management/src/main/java/com/encipher/foodpool/FoodPoolApplication.java
 /Users/apple/encipher-projects/employee-food-management/src/main/java/com/encipher/foodpool/model/MenuConfig.java
+/Users/apple/encipher-projects/employee-food-management/src/main/java/com/encipher/foodpool/service/AiChatService.java
 /Users/apple/encipher-projects/employee-food-management/src/main/java/com/encipher/foodpool/repository/FoodScanRepository.java
 /Users/apple/encipher-projects/employee-food-management/src/main/java/com/encipher/foodpool/controller/BotWebhookController.java
 /Users/apple/encipher-projects/employee-food-management/src/main/java/com/encipher/foodpool/repository/FoodPoolRepository.java
