@@ -1,0 +1,205 @@
+name: Build and Deploy Food Pool
+
+on:
+  # Manual trigger - ALWAYS available
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to build/deploy'
+        required: true
+        default: 'tharun_stable_05_jan_2026'
+        type: string
+      action:
+        description: 'What to do'
+        required: true
+        default: 'build-and-deploy'
+        type: choice
+        options:
+          - build-only
+          - build-and-deploy
+
+  # Automatic trigger ONLY for Release branches
+  push:
+    branches:
+      - 'Release/**'
+      - 'release/**'
+
+env:
+  JAVA_VERSION: '17'
+  ACR_REGISTRY: devgeneric.azurecr.io
+  IMAGE_NAME: encipher-food-pool
+  CONTAINER_NAME: food-pool
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.vars.outputs.image_tag }}
+      version: ${{ steps.version.outputs.version }}
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch || github.ref }}
+          
+      - name: Set variables
+        id: vars
+        run: |
+          # Get first 12 characters of commit SHA
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-12)
+          echo "image_tag=$SHORT_SHA" >> $GITHUB_OUTPUT
+          echo "Image tag: $SHORT_SHA"
+          
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: maven
+          
+      - name: Get version
+        id: version
+        run: |
+          VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+          
+      - name: Build with Maven
+        run: mvn clean package -DskipTests -B
+        
+      - name: Login to Azure Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.ACR_REGISTRY }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+          
+      - name: Build and Push Docker image
+        run: |
+          # Build image
+          docker build -t ${{ env.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.image_tag }} .
+          
+          # Tag as latest too
+          docker tag ${{ env.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.image_tag }} \
+                     ${{ env.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          
+          # Push both tags
+          docker push ${{ env.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.image_tag }}
+          docker push ${{ env.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          
+          echo "Pushed image: ${{ env.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.image_tag }}"
+          
+      - name: Build Summary
+        run: |
+          echo "=========================================="
+          echo "            BUILD COMPLETE"
+          echo "=========================================="
+          echo "Branch: ${{ github.event.inputs.branch || github.ref_name }}"
+          echo "Version: ${{ steps.version.outputs.version }}"
+          echo "Image: ${{ env.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.image_tag }}"
+          echo "=========================================="
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    # Deploy only if: auto-trigger (Release branch) OR manual with build-and-deploy
+    if: github.event_name == 'push' || github.event.inputs.action == 'build-and-deploy'
+    
+    steps:
+      - name: Deploy to VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          password: ${{ secrets.VM_PASSWORD }}
+          script: |
+            set -e
+            
+            echo "=== Starting Deployment ==="
+            
+            # Login to Azure Container Registry
+            echo "${{ secrets.ACR_PASSWORD }}" | docker login ${{ env.ACR_REGISTRY }} -u ${{ secrets.ACR_USERNAME }} --password-stdin
+            
+            # Pull the new image
+            echo "Pulling image: ${{ env.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.image_tag }}"
+            docker pull ${{ env.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.image_tag }}
+            
+            # Stop and remove old container
+            echo "Stopping old container..."
+            docker stop ${{ env.CONTAINER_NAME }} 2>/dev/null || true
+            docker rm ${{ env.CONTAINER_NAME }} 2>/dev/null || true
+            
+            # Run new container with all environment variables
+            echo "Starting new container..."
+            docker run -d \
+              --name ${{ env.CONTAINER_NAME }} \
+              --restart=always \
+              -p 8888:8888 \
+              -e SPRING_PROFILES_ACTIVE=prod \
+              -e MONGODB_URI="${{ secrets.MONGODB_URI }}" \
+              -e MONGODB_DATABASE="${{ secrets.MONGODB_DATABASE }}" \
+              -e ZOHO_CLIENT_ID="${{ secrets.ZOHO_CLIENT_ID }}" \
+              -e ZOHO_CLIENT_SECRET="${{ secrets.ZOHO_CLIENT_SECRET }}" \
+              -e CLIQ_WEBHOOK_URL="${{ secrets.CLIQ_WEBHOOK_URL }}" \
+              -e CLIQ_BOT_MESSAGE_URL="${{ secrets.CLIQ_BOT_MESSAGE_URL }}" \
+              -e AZURE_OPENAI_ENDPOINT="${{ secrets.AZURE_OPENAI_ENDPOINT }}" \
+              -e AZURE_OPENAI_KEY="${{ secrets.AZURE_OPENAI_KEY }}" \
+              -e AZURE_OPENAI_DEPLOYMENT="${{ secrets.AZURE_OPENAI_DEPLOYMENT }}" \
+              -e APP_BASE_URL="${{ secrets.APP_BASE_URL }}" \
+              ${{ env.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.image_tag }}
+            
+            # Wait for container to start
+            echo "Waiting for container to start..."
+            sleep 15
+            
+            # Health check
+            echo "Running health check..."
+            curl -f http://localhost:8888/test/health || echo "Health check endpoint not available yet"
+            
+            # Show container status
+            docker ps | grep ${{ env.CONTAINER_NAME }} || true
+            
+            # Cleanup old images
+            echo "Cleaning up old images..."
+            docker image prune -f
+            
+            echo "=== Deployment Complete ==="
+          
+      - name: Verify deployment
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          password: ${{ secrets.VM_PASSWORD }}
+          script: |
+            echo "=== Container Status ==="
+            docker ps | grep ${{ env.CONTAINER_NAME }} || echo "Container not found"
+            echo ""
+            echo "=== Recent Logs ==="
+            docker logs ${{ env.CONTAINER_NAME }} --tail 30 || echo "No logs available"
+
+  summary:
+    needs: [build, deploy]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Final Summary
+        run: |
+          echo "=========================================="
+          echo "         PIPELINE SUMMARY"
+          echo "=========================================="
+          echo "Trigger: ${{ github.event_name }}"
+          echo "Branch: ${{ github.event.inputs.branch || github.ref_name }}"
+          echo "Action: ${{ github.event.inputs.action || 'auto-deploy' }}"
+          echo "Version: ${{ needs.build.outputs.version }}"
+          echo "Image Tag: ${{ needs.build.outputs.image_tag }}"
+          echo "Full Image: ${{ env.ACR_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.image_tag }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Triggered by: ${{ github.actor }}"
+          echo ""
+          echo "Results:"
+          echo "  Build: ${{ needs.build.result }}"
+          echo "  Deploy: ${{ needs.deploy.result }}"
+          echo "=========================================="
