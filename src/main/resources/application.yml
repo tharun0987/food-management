@@ -38,11 +38,10 @@ app:
   admin-emails: admin@encipherhealth.com,hr@encipherhealth.com
   base-url: https://food.management.encipherhealth.com
   cliq:
-    # Zoho Cliq Bot - Incoming Webhook (for receiving messages from users)
-    webhook-url: https://cliq.zoho.in/api/v2/bots/encipherfoodbot/incoming
-    # Zoho Cliq Bot - Message API (for sending messages to users/channels)
-    bot-message-url: https://cliq.zoho.in/api/v2/bots/encipherfoodbot/message
-    bot-webhook-secret: ${CLIQ_BOT_SECRET:}
+    # Zoho Cliq Bot - Incoming Webhook with token (for sending notifications to users)
+    webhook-url: https://cliq.zoho.in/api/v2/bots/encipherfoodbot/incoming?zapikey=1001.5bef4160d61ffb8976101e391be69479.8fc6d8c621366629a5cf4776eeb13469
+    # Zoho Cliq Bot - Message API (alternative endpoint)
+    bot-message-url: https://cliq.zoho.in/api/v2/bots/encipherfoodbot/message?zapikey=1001.5bef4160d61ffb8976101e391be69479.8fc6d8c621366629a5cf4776eeb13469
 
 logging:
   level:
