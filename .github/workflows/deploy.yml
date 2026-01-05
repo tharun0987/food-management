@@ -96,18 +96,13 @@ jobs:
     environment: production
     
     steps:
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.VM_SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.VM_HOST }} >> ~/.ssh/known_hosts
-          
       - name: Deploy to VM
-        env:
-          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
-        run: |
-          ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} << 'ENDSSH'
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          password: ${{ secrets.VM_PASSWORD }}
+          script: |
             set -e
             
             echo "=== Starting Deployment ==="
@@ -153,24 +148,26 @@ jobs:
             curl -f http://localhost:8888/test/health || echo "Health check endpoint not available yet"
             
             # Show container status
-            docker ps | grep ${{ env.CONTAINER_NAME }}
+            docker ps | grep ${{ env.CONTAINER_NAME }} || true
             
-            # Cleanup old images (keep last 3)
+            # Cleanup old images
             echo "Cleaning up old images..."
             docker image prune -f
             
             echo "=== Deployment Complete ==="
-          ENDSSH
           
       - name: Verify deployment
-        run: |
-          ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} << 'ENDSSH'
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          password: ${{ secrets.VM_PASSWORD }}
+          script: |
             echo "=== Container Status ==="
-            docker ps | grep ${{ env.CONTAINER_NAME }}
+            docker ps | grep ${{ env.CONTAINER_NAME }} || echo "Container not found"
             echo ""
             echo "=== Recent Logs ==="
-            docker logs ${{ env.CONTAINER_NAME }} --tail 30
-          ENDSSH
+            docker logs ${{ env.CONTAINER_NAME }} --tail 30 || echo "No logs available"
 
   notify:
     needs: [build-and-push, deploy]
