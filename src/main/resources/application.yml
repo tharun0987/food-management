@@ -41,10 +41,10 @@ app:
     webhook-url: ${CLIQ_WEBHOOK_URL}
     bot-message-url: ${CLIQ_BOT_MESSAGE_URL}
   azure-openai:
-    endpoint: ${AZURE_OPENAI_ENDPOINT}
+    endpoint: ${AZURE_OPENAI_ENDPOINT:https://eh-eastus-2-foundary.cognitiveservices.azure.com}
     api-key: ${AZURE_OPENAI_KEY}
-    deployment-name: ${AZURE_OPENAI_DEPLOYMENT:gpt-4o}
-    api-version: ${AZURE_OPENAI_API_VERSION:2025-04-01-preview}
+    deployment-name: ${AZURE_OPENAI_DEPLOYMENT:Riskgeni-Model-5.2}
+    api-version: ${AZURE_OPENAI_API_VERSION:2024-12-01-preview}
 
 logging:
   level:
