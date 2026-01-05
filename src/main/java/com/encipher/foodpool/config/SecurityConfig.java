@@ -33,6 +33,8 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/", "/login", "/error", "/static/**", "/css/**", "/js/**", "/test/**").permitAll()
+                // Bot webhook endpoints - no auth required (validated by secret)
+                .requestMatchers("/api/bot/**").permitAll()
                 // Admin pages - require ADMIN or CONTRIBUTOR role
                 .requestMatchers("/admin", "/admin/", "/admin/menu", "/admin/menu/**", "/admin/pool/**").hasAnyRole("ADMIN", "CONTRIBUTOR")
                 // Employee management - only ADMIN

@@ -21,6 +21,7 @@ public class FoodPoolService {
     private final FoodScanRepository foodScanRepository;
     private final MenuConfigRepository menuConfigRepository;
     private final CliqNotificationService cliqNotificationService;
+    private final AuditService auditService;
     
     // ============== MENU CONFIG ==============
     
@@ -75,9 +76,9 @@ public class FoodPoolService {
     // ============== POOL OPERATIONS ==============
     
     /**
-     * Admin: Start the pool/survey with duration and food date
+     * Admin: Start the pool/survey with duration, food date, and grace period
      */
-    public MenuConfig openPool(String adminEmail, int durationHours, LocalDate foodDate) {
+    public MenuConfig openPool(String adminEmail, String adminName, int durationHours, LocalDate foodDate, int gracePeriodHours) {
         MenuConfig config = getTodayMenu();
         
         if (!config.isFoodAvailable()) {
@@ -87,15 +88,21 @@ public class FoodPoolService {
         if (durationHours < 1) durationHours = 1;
         if (durationHours > 24) durationHours = 24;
         
+        if (gracePeriodHours < 0) gracePeriodHours = 0;
+        if (gracePeriodHours > 4) gracePeriodHours = 4;
+        
         LocalDateTime now = LocalDateTime.now();
+        LocalDateTime autoCloseAt = now.plusHours(durationHours);
         
         config.setPoolOpen(true);
         config.setPoolOpenedAt(now);
         config.setPoolOpenedBy(adminEmail);
         config.setPoolDurationHours(durationHours);
-        config.setPoolAutoCloseAt(now.plusHours(durationHours));
+        config.setPoolAutoCloseAt(autoCloseAt);
         config.setPoolClosedAt(null);
         config.setFoodDate(foodDate);
+        config.setGracePeriodHours(gracePeriodHours);
+        config.setGraceEndTime(autoCloseAt.plusHours(gracePeriodHours));
         
         config.setNotificationPoolStarted(true);
         config.setNotification1HourBefore(false);
@@ -104,6 +111,9 @@ public class FoodPoolService {
         
         MenuConfig saved = menuConfigRepository.save(config);
         
+        // Audit log
+        auditService.logPoolStarted(adminEmail, adminName != null ? adminName : adminEmail, foodDate, durationHours);
+        
         try {
             cliqNotificationService.notifyPoolStarted(durationHours, foodDate);
         } catch (Exception e) {
@@ -111,6 +121,20 @@ public class FoodPoolService {
         }
         
         return saved;
+    }
+    
+    /**
+     * Admin: Start the pool/survey with duration and food date (default grace period)
+     */
+    public MenuConfig openPool(String adminEmail, String adminName, int durationHours, LocalDate foodDate) {
+        return openPool(adminEmail, adminName, durationHours, foodDate, 2); // Default 2 hours grace
+    }
+    
+    /**
+     * Admin: Start the pool/survey with duration and food date (backward compatible)
+     */
+    public MenuConfig openPool(String adminEmail, int durationHours, LocalDate foodDate) {
+        return openPool(adminEmail, null, durationHours, foodDate);
     }
     
     public MenuConfig openPool(String adminEmail, int durationHours) {
@@ -122,15 +146,24 @@ public class FoodPoolService {
     }
     
     /**
-     * Admin: Close the pool
+     * Admin: Close the pool manually
      */
-    public MenuConfig closePool(String adminEmail) {
+    public MenuConfig closePool(String adminEmail, String adminName) {
         MenuConfig config = getTodayMenu();
+        LocalDateTime closedAt = LocalDateTime.now();
+        
         config.setPoolOpen(false);
-        config.setPoolClosedAt(LocalDateTime.now());
+        config.setPoolClosedAt(closedAt);
         config.setUpdatedBy(adminEmail);
         
+        // Set grace end time based on configured grace period
+        int gracePeriod = config.getGracePeriodHours() > 0 ? config.getGracePeriodHours() : 2;
+        config.setGraceEndTime(closedAt.plusHours(gracePeriod));
+        
         MenuConfig saved = menuConfigRepository.save(config);
+        
+        // Audit log - manual close
+        auditService.logPoolClosedManual(adminEmail, adminName != null ? adminName : adminEmail, config.getFoodDate());
         
         try {
             Map<String, Long> stats = getStatsForFoodDate(config.getFoodDate());
@@ -140,6 +173,13 @@ public class FoodPoolService {
         }
         
         return saved;
+    }
+    
+    /**
+     * Admin: Close the pool (backward compatible)
+     */
+    public MenuConfig closePool(String adminEmail) {
+        return closePool(adminEmail, null);
     }
     
     /**
@@ -181,7 +221,15 @@ public class FoodPoolService {
                     config.setPoolOpen(false);
                     config.setPoolClosedAt(now);
                     config.setUpdatedBy("SYSTEM_AUTO_CLOSE");
+                    
+                    // Set grace end time
+                    int gracePeriod = config.getGracePeriodHours() > 0 ? config.getGracePeriodHours() : 2;
+                    config.setGraceEndTime(now.plusHours(gracePeriod));
+                    
                     menuConfigRepository.save(config);
+                    
+                    // Audit log - automatic close
+                    auditService.logPoolClosedAuto(config.getFoodDate());
                     
                     try {
                         Map<String, Long> stats = getStatsForFoodDate(config.getFoodDate());

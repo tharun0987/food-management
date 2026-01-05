@@ -49,6 +49,10 @@ public class MenuConfig {
     private boolean notification50Percent;
     private boolean notification70Percent;
     
+    // Grace period for late votes
+    private int gracePeriodHours;           // Configurable grace period (0-4 hours, default 2)
+    private LocalDateTime graceEndTime;     // When grace period ends (poolClosedAt + gracePeriodHours)
+    
     private LocalDateTime updatedAt;
     private String updatedBy;
     
@@ -61,6 +65,7 @@ public class MenuConfig {
         this.vegItems = new ArrayList<>();
         this.nonvegItems = new ArrayList<>();
         this.poolDurationHours = 6;  // Default 6 hours
+        this.gracePeriodHours = 2;   // Default 2 hours grace period
         this.notificationPoolStarted = false;
         this.notification1HourBefore = false;
         this.notification50Percent = false;

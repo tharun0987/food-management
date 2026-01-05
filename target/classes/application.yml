@@ -36,10 +36,13 @@ spring:
 # App configuration
 app:
   admin-emails: admin@encipherhealth.com,hr@encipherhealth.com
-  base-url: http://food.management.encipherhealth.com
+  base-url: https://food.management.encipherhealth.com
   cliq:
-    # Zoho Cliq Bot Incoming Webhook
+    # Zoho Cliq Bot - Incoming Webhook (for receiving messages from users)
     webhook-url: https://cliq.zoho.in/api/v2/bots/encipherfoodbot/incoming
+    # Zoho Cliq Bot - Message API (for sending messages to users/channels)
+    bot-message-url: https://cliq.zoho.in/api/v2/bots/encipherfoodbot/message
+    bot-webhook-secret: ${CLIQ_BOT_SECRET:}
 
 logging:
   level:

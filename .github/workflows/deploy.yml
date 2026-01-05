@@ -1,0 +1,163 @@
+name: Build and Deploy Food Pool
+
+on:
+  # Manual trigger with branch selection
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to deploy'
+        required: true
+        default: 'stable'
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+  # Automatic trigger for Release branches
+  push:
+    branches:
+      - 'Release/**'
+      - 'release/**'
+
+env:
+  JAVA_VERSION: '17'
+  DOCKER_IMAGE_NAME: encipher-food-pool
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch || github.ref }}
+          
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: maven
+          
+      - name: Get version
+        id: version
+        run: |
+          VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+          
+      - name: Build with Maven
+        run: mvn clean package -DskipTests -B
+        
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-jar
+          path: target/*.jar
+          retention-days: 5
+          
+      - name: Build Docker image
+        run: |
+          docker build -t ${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }} .
+          docker tag ${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }} ${{ env.DOCKER_IMAGE_NAME }}:latest
+          
+      - name: Save Docker image
+        run: |
+          docker save ${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }} | gzip > docker-image.tar.gz
+          
+      - name: Upload Docker image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: docker-image.tar.gz
+          retention-days: 1
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event.inputs.environment == 'production'
+    environment: production
+    
+    steps:
+      - name: Download Docker image
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+          
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VM_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.VM_HOST }} >> ~/.ssh/known_hosts
+          
+      - name: Transfer Docker image to VM
+        run: |
+          scp docker-image.tar.gz ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:/tmp/
+          
+      - name: Deploy to VM
+        run: |
+          ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} << 'EOF'
+            # Load Docker image
+            docker load < /tmp/docker-image.tar.gz
+            
+            # Stop and remove old container
+            docker stop food-pool 2>/dev/null || true
+            docker rm food-pool 2>/dev/null || true
+            
+            # Run new container
+            docker run -d \
+              --name food-pool \
+              --restart=always \
+              -p 8888:8888 \
+              -e SPRING_PROFILES_ACTIVE=prod \
+              ${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}
+            
+            # Wait for container to start
+            sleep 10
+            
+            # Health check
+            curl -f http://localhost:8888/test/health || exit 1
+            
+            # Cleanup
+            rm /tmp/docker-image.tar.gz
+            docker image prune -f
+            
+            echo "Deployment successful!"
+          EOF
+          
+      - name: Verify deployment
+        run: |
+          ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} "docker ps | grep food-pool && docker logs food-pool --tail 20"
+          
+      - name: Notify success
+        if: success()
+        run: echo "Deployment to production completed successfully!"
+        
+      - name: Notify failure
+        if: failure()
+        run: echo "Deployment failed! Check the logs above."
+
+  notify:
+    needs: [build, deploy]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Deployment Summary
+        run: |
+          echo "=== Deployment Summary ==="
+          echo "Branch: ${{ github.event.inputs.branch || github.ref_name }}"
+          echo "Version: ${{ needs.build.outputs.version }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Triggered by: ${{ github.actor }}"
+          echo "Build status: ${{ needs.build.result }}"
+          echo "Deploy status: ${{ needs.deploy.result }}"
+

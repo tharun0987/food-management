@@ -19,6 +19,7 @@ import java.util.*;
 public class EmployeeService {
     
     private final EmployeeRepository employeeRepository;
+    private final AuditService auditService;
     
     public Optional<Employee> findByEmail(String email) {
         return employeeRepository.findByEmailIgnoreCase(email);
@@ -146,9 +147,13 @@ public class EmployeeService {
     
     /**
      * Set role for employee - properly manage role distinction
+     * @param actorEmail The email of the admin performing the change (for audit)
+     * @param actorName The name of the admin performing the change (for audit)
      */
-    public void setRole(String employeeId, String role) {
+    public void setRole(String employeeId, String role, String actorEmail, String actorName) {
         employeeRepository.findByEmployeeId(employeeId).ifPresent(emp -> {
+            String oldRole = emp.getRole() != null ? emp.getRole() : "USER";
+            
             emp.setRole(role);
             
             // Set legacy isAdmin field based on role
@@ -161,8 +166,19 @@ public class EmployeeService {
             }
             
             employeeRepository.save(emp);
+            
+            // Audit log the role change
+            auditService.logRoleChange(actorEmail, actorName, employeeId, emp.getName(), oldRole, role);
+            
             log.info("Set role={} for employee: {} - {}", role, employeeId, emp.getName());
         });
+    }
+    
+    /**
+     * Set role for employee (backward compatibility - no audit)
+     */
+    public void setRole(String employeeId, String role) {
+        setRole(employeeId, role, "SYSTEM", "System");
     }
     
     public void setAdmin(String employeeId, boolean isAdmin) {

@@ -9,8 +9,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -22,7 +21,10 @@ public class CliqNotificationService {
     @Value("${app.cliq.webhook-url:}")
     private String webhookUrl;
     
-    @Value("${app.base-url:http://food.management.encipherhealth.com}")
+    @Value("${app.cliq.bot-message-url:}")
+    private String botMessageUrl;
+    
+    @Value("${app.base-url:https://food.management.encipherhealth.com}")
     private String appBaseUrl;
     
     // ============== AUTO NOTIFICATIONS ==============
@@ -116,7 +118,137 @@ public class CliqNotificationService {
         sendNotification(message);
     }
     
-    // ============== CORE SEND METHOD ==============
+    // ============== INTERACTIVE NOTIFICATIONS ==============
+    
+    /**
+     * Send pool started notification with interactive vote buttons
+     */
+    public void notifyPoolStartedWithButtons(int durationHours, LocalDate foodDate) {
+        String dateStr = foodDate.format(DateTimeFormatter.ofPattern("EEEE, MMM dd"));
+        
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("text", "[FOOD POOL] Survey Started for " + dateStr);
+        
+        // Card with buttons
+        Map<String, Object> card = new HashMap<>();
+        card.put("title", "Vote for Your Meal");
+        card.put("theme", "modern-inline");
+        payload.put("card", card);
+        
+        // Buttons
+        List<Map<String, Object>> buttons = new ArrayList<>();
+        
+        Map<String, Object> vegButton = new HashMap<>();
+        vegButton.put("label", "VEG");
+        vegButton.put("type", "+");
+        vegButton.put("action", Map.of(
+            "type", "invoke.function",
+            "data", Map.of("food", "veg")
+        ));
+        buttons.add(vegButton);
+        
+        Map<String, Object> nonvegButton = new HashMap<>();
+        nonvegButton.put("label", "NON-VEG");
+        nonvegButton.put("type", "+");
+        nonvegButton.put("action", Map.of(
+            "type", "invoke.function",
+            "data", Map.of("food", "nonveg")
+        ));
+        buttons.add(nonvegButton);
+        
+        Map<String, Object> webButton = new HashMap<>();
+        webButton.put("label", "Vote Online");
+        webButton.put("type", "");
+        webButton.put("action", Map.of(
+            "type", "open.url",
+            "data", Map.of("web", appBaseUrl + "/pool")
+        ));
+        buttons.add(webButton);
+        
+        payload.put("buttons", buttons);
+        
+        sendRichNotification(payload);
+    }
+    
+    /**
+     * Send collection acknowledgement to user
+     */
+    public void sendCollectionAcknowledge(String employeeName) {
+        String message = "[FOOD POOL] Meal Collected\n\n" +
+                "Hi " + employeeName + "!\n\n" +
+                "Your meal has been collected successfully.\n" +
+                "Enjoy your food! Thank you for participating.";
+        
+        sendNotification(message);
+    }
+    
+    /**
+     * Send one hour warning notification
+     */
+    public void sendOneHourWarning(LocalDate foodDate) {
+        String dateStr = foodDate.format(DateTimeFormatter.ofPattern("EEEE, MMM dd"));
+        String message = "[FOOD POOL] 1 Hour Left!\n\n" +
+                "Only 1 hour remaining to vote for food on " + dateStr + "!\n\n" +
+                "If you haven't voted yet, do it NOW!\n\n" +
+                "Vote: " + appBaseUrl + "/pool";
+        
+        sendNotification(message);
+    }
+    
+    /**
+     * Send reminder to users who haven't voted
+     */
+    public void sendVoteReminderToNonVoters(List<String> emails) {
+        String message = "[FOOD POOL] Reminder to Vote\n\n" +
+                "You haven't voted for tomorrow's food yet.\n" +
+                "The survey will close soon!\n\n" +
+                "Vote Now: " + appBaseUrl + "/pool";
+        
+        // This would need integration with Zoho Cliq personal messaging
+        // For now, send to channel
+        sendNotification(message);
+    }
+    
+    /**
+     * Send grace request notification to admins
+     */
+    public void notifyGraceRequest(String employeeName, LocalDate foodDate, String foodType) {
+        String message = "[FOOD POOL] Grace Request\n\n" +
+                "New late vote request received:\n" +
+                "Employee: " + employeeName + "\n" +
+                "Food Date: " + foodDate + "\n" +
+                "Choice: " + foodType.toUpperCase() + "\n\n" +
+                "Review in admin dashboard: " + appBaseUrl + "/admin";
+        
+        sendNotification(message);
+    }
+    
+    /**
+     * Send grace request approval notification
+     */
+    public void notifyGraceApproved(String employeeName, LocalDate foodDate) {
+        String message = "[FOOD POOL] Grace Request Approved\n\n" +
+                "Good news, " + employeeName + "!\n" +
+                "Your late vote request for " + foodDate + " has been approved.\n" +
+                "Your meal has been added to the order.";
+        
+        sendNotification(message);
+    }
+    
+    /**
+     * Send grace request rejection notification
+     */
+    public void notifyGraceRejected(String employeeName, LocalDate foodDate, String reason) {
+        String message = "[FOOD POOL] Grace Request Rejected\n\n" +
+                "Hi " + employeeName + ",\n" +
+                "Your late vote request for " + foodDate + " has been rejected.\n" +
+                "Reason: " + reason + "\n\n" +
+                "Please make sure to vote on time for future food pools.";
+        
+        sendNotification(message);
+    }
+    
+    // ============== CORE SEND METHODS ==============
     
     private void sendNotification(String message) {
         if (webhookUrl == null || webhookUrl.isEmpty()) {
@@ -147,6 +279,38 @@ public class CliqNotificationService {
         } catch (Exception e) {
             log.error("Error sending notification: {}", e.getMessage());
             throw new RuntimeException("Failed to send notification: " + e.getMessage());
+        }
+    }
+    
+    private void sendRichNotification(Map<String, Object> payload) {
+        String url = botMessageUrl != null && !botMessageUrl.isEmpty() ? botMessageUrl : webhookUrl;
+        
+        if (url == null || url.isEmpty()) {
+            log.warn("Cliq webhook URL not configured");
+            throw new RuntimeException("Webhook URL not configured");
+        }
+        
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
+            
+            log.info("Sending rich notification to Cliq...");
+            
+            ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
+            
+            if (response.getStatusCode().is2xxSuccessful()) {
+                log.info("Rich notification sent successfully");
+            } else {
+                log.error("Rich notification failed: {} - {}", response.getStatusCode(), response.getBody());
+                // Fallback to simple notification
+                sendNotification(payload.getOrDefault("text", "Notification").toString());
+            }
+        } catch (Exception e) {
+            log.error("Error sending rich notification: {}, falling back to simple", e.getMessage());
+            // Fallback to simple notification
+            sendNotification(payload.getOrDefault("text", "Notification").toString());
         }
     }
 }

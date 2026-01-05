@@ -33,6 +33,9 @@ public class AdminController {
     private final EmployeeService employeeService;
     private final FoodPoolService foodPoolService;
     private final CliqNotificationService cliqNotificationService;
+    private final QrCodeService qrCodeService;
+    private final AuditService auditService;
+    private final GraceRequestService graceRequestService;
     
     private void addCommonAttributes(OAuth2User user, Model model) {
         model.addAttribute("employeeName", user.getAttribute("employeeName"));
@@ -769,6 +772,7 @@ public class AdminController {
     @PostMapping("/employees/{employeeId}/role")
     @ResponseBody
     public ResponseEntity<?> setRole(
+            @AuthenticationPrincipal OAuth2User user,
             @PathVariable String employeeId,
             @RequestBody Map<String, String> body) {
         
@@ -778,7 +782,10 @@ public class AdminController {
             return ResponseEntity.badRequest().body(Map.of("error", "Invalid role"));
         }
         
-        employeeService.setRole(employeeId, role);
+        String actorEmail = user.getAttribute("Email");
+        String actorName = user.getAttribute("employeeName");
+        
+        employeeService.setRole(employeeId, role, actorEmail, actorName);
         return ResponseEntity.ok(Map.of("success", true, "message", "Role updated to " + role));
     }
     
@@ -818,6 +825,360 @@ public class AdminController {
             LocalDate localDate = LocalDate.parse(date);
             List<FoodPool> pools = foodPoolService.getPoolsForFoodDate(localDate);
             return ResponseEntity.ok(pools);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+    // ============== QR CODE MANAGEMENT ==============
+    
+    @PostMapping("/qr/generate")
+    @ResponseBody
+    public ResponseEntity<?> generateQrCode(
+            @AuthenticationPrincipal OAuth2User user,
+            @RequestBody Map<String, Object> body) {
+        try {
+            String email = user.getAttribute("Email");
+            String name = user.getAttribute("employeeName");
+            
+            LocalDate foodDate = LocalDate.now().plusDays(1);
+            if (body.containsKey("foodDate")) {
+                String foodDateStr = (String) body.get("foodDate");
+                if (foodDateStr != null && !foodDateStr.isEmpty()) {
+                    foodDate = LocalDate.parse(foodDateStr);
+                }
+            }
+            
+            int expirationHours = 24;
+            if (body.containsKey("expirationHours")) {
+                Object expObj = body.get("expirationHours");
+                if (expObj instanceof Integer) {
+                    expirationHours = (Integer) expObj;
+                } else if (expObj instanceof String) {
+                    expirationHours = Integer.parseInt((String) expObj);
+                }
+            }
+            
+            QrCode qrCode = qrCodeService.generateQrCode(foodDate, expirationHours, email, name);
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "qrCode", qrCode,
+                "message", "QR code generated for " + foodDate
+            ));
+        } catch (Exception e) {
+            log.error("Error generating QR code: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+    @GetMapping("/qr/download/{id}")
+    public ResponseEntity<byte[]> downloadQrCode(@PathVariable String id) {
+        try {
+            byte[] qrImage = qrCodeService.generateQrImageById(id);
+            QrCode qrCode = qrCodeService.getQrCodeById(id).orElse(null);
+            String filename = "qr_" + (qrCode != null ? qrCode.getFoodDate() : "code") + ".png";
+            
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                    .contentType(MediaType.IMAGE_PNG)
+                    .body(qrImage);
+        } catch (Exception e) {
+            log.error("Error downloading QR code: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
+    }
+    
+    @GetMapping("/qr/image/{id}")
+    public ResponseEntity<byte[]> getQrCodeImage(@PathVariable String id) {
+        try {
+            byte[] qrImage = qrCodeService.generateQrImageById(id);
+            return ResponseEntity.ok()
+                    .contentType(MediaType.IMAGE_PNG)
+                    .body(qrImage);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+    
+    @GetMapping("/qr/list")
+    @ResponseBody
+    public ResponseEntity<?> listQrCodes(
+            @RequestParam(required = false) String foodDate) {
+        try {
+            List<QrCode> qrCodes;
+            if (foodDate != null && !foodDate.isEmpty()) {
+                LocalDate date = LocalDate.parse(foodDate);
+                qrCodes = qrCodeService.getQrCodesForDate(date);
+            } else {
+                qrCodes = qrCodeService.getAllActiveQrCodes();
+            }
+            return ResponseEntity.ok(qrCodes);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+    @DeleteMapping("/qr/{id}")
+    @ResponseBody
+    public ResponseEntity<?> deactivateQrCode(
+            @AuthenticationPrincipal OAuth2User user,
+            @PathVariable String id) {
+        try {
+            String email = user.getAttribute("Email");
+            qrCodeService.deactivateQrCode(id, email);
+            return ResponseEntity.ok(Map.of("success", true, "message", "QR code deactivated"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+    @GetMapping("/qr/options")
+    @ResponseBody
+    public ResponseEntity<?> getQrExpirationOptions() {
+        return ResponseEntity.ok(QrCodeService.getExpirationOptions());
+    }
+    
+    // ============== AUDIT TRAIL ==============
+    
+    @GetMapping("/audit")
+    @ResponseBody
+    public ResponseEntity<?> getAuditLogs(
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String action) {
+        try {
+            LocalDate start = startDate != null ? LocalDate.parse(startDate) : LocalDate.now().minusDays(30);
+            LocalDate end = endDate != null ? LocalDate.parse(endDate) : LocalDate.now();
+            
+            List<AuditLog> logs;
+            if (action != null && !action.isEmpty()) {
+                logs = auditService.getAuditLogsByAction(action, start, end);
+            } else {
+                logs = auditService.getAuditLogs(start, end);
+            }
+            
+            return ResponseEntity.ok(logs);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+    @GetMapping("/audit/recent")
+    @ResponseBody
+    public ResponseEntity<?> getRecentAuditLogs() {
+        return ResponseEntity.ok(auditService.getRecentLogs());
+    }
+    
+    @GetMapping("/audit/actions")
+    @ResponseBody
+    public ResponseEntity<?> getAuditActionTypes() {
+        return ResponseEntity.ok(List.of(
+            AuditLog.ACTION_ROLE_CHANGE,
+            AuditLog.ACTION_POOL_STARTED,
+            AuditLog.ACTION_POOL_CLOSED_MANUAL,
+            AuditLog.ACTION_POOL_CLOSED_AUTO,
+            AuditLog.ACTION_QR_GENERATED,
+            AuditLog.ACTION_QR_DEACTIVATED,
+            AuditLog.ACTION_GRACE_REQUEST_SUBMITTED,
+            AuditLog.ACTION_GRACE_REQUEST_APPROVED,
+            AuditLog.ACTION_GRACE_REQUEST_REJECTED,
+            AuditLog.ACTION_MENU_UPDATED,
+            AuditLog.ACTION_NOTIFICATION_SENT
+        ));
+    }
+    
+    // ============== GRACE REQUESTS ==============
+    
+    @GetMapping("/grace/pending")
+    @ResponseBody
+    public ResponseEntity<?> getPendingGraceRequests() {
+        return ResponseEntity.ok(graceRequestService.getPendingRequests());
+    }
+    
+    @GetMapping("/grace/pending/count")
+    @ResponseBody
+    public ResponseEntity<?> getPendingGraceRequestCount() {
+        return ResponseEntity.ok(Map.of("count", graceRequestService.getPendingCount()));
+    }
+    
+    @GetMapping("/grace/list")
+    @ResponseBody
+    public ResponseEntity<?> getGraceRequests(
+            @RequestParam(required = false) String foodDate) {
+        try {
+            if (foodDate != null && !foodDate.isEmpty()) {
+                LocalDate date = LocalDate.parse(foodDate);
+                return ResponseEntity.ok(graceRequestService.getRequestsForDate(date));
+            }
+            return ResponseEntity.ok(graceRequestService.getPendingRequests());
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+    @PostMapping("/grace/{id}/approve")
+    @ResponseBody
+    public ResponseEntity<?> approveGraceRequest(
+            @AuthenticationPrincipal OAuth2User user,
+            @PathVariable String id) {
+        try {
+            String email = user.getAttribute("Email");
+            String name = user.getAttribute("employeeName");
+            
+            GraceRequest request = graceRequestService.approveRequest(id, email, name);
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Grace request approved for " + request.getEmployeeName(),
+                "request", request
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+    @PostMapping("/grace/{id}/reject")
+    @ResponseBody
+    public ResponseEntity<?> rejectGraceRequest(
+            @AuthenticationPrincipal OAuth2User user,
+            @PathVariable String id,
+            @RequestBody(required = false) Map<String, String> body) {
+        try {
+            String email = user.getAttribute("Email");
+            String name = user.getAttribute("employeeName");
+            String reason = body != null ? body.getOrDefault("reason", "No reason provided") : "No reason provided";
+            
+            GraceRequest request = graceRequestService.rejectRequest(id, email, name, reason);
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Grace request rejected for " + request.getEmployeeName(),
+                "request", request
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+    // ============== ANALYTICS ==============
+    
+    @GetMapping("/analytics/data")
+    @ResponseBody
+    public ResponseEntity<?> getAnalyticsData(
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String employeeId,
+            @RequestParam(required = false) String employeeName) {
+        try {
+            LocalDate start = startDate != null ? LocalDate.parse(startDate) : LocalDate.now().minusDays(30);
+            LocalDate end = endDate != null ? LocalDate.parse(endDate) : LocalDate.now();
+            
+            // Fetch all data
+            List<FoodPool> allPools = foodPoolService.getPoolsForDateRange(start, end);
+            List<FoodScan> allScans = foodPoolService.getScansForDateRange(start, end);
+            
+            // Apply filters if provided
+            if (employeeId != null && !employeeId.isEmpty()) {
+                String eid = employeeId;
+                allPools = allPools.stream().filter(p -> eid.equals(p.getEmployeeId())).collect(Collectors.toList());
+                allScans = allScans.stream().filter(s -> eid.equals(s.getEmployeeId())).collect(Collectors.toList());
+            }
+            if (employeeName != null && !employeeName.isEmpty()) {
+                String nameLower = employeeName.toLowerCase();
+                allPools = allPools.stream()
+                        .filter(p -> p.getEmployeeName() != null && p.getEmployeeName().toLowerCase().contains(nameLower))
+                        .collect(Collectors.toList());
+                allScans = allScans.stream()
+                        .filter(s -> s.getEmployeeName() != null && s.getEmployeeName().toLowerCase().contains(nameLower))
+                        .collect(Collectors.toList());
+            }
+            
+            // Calculate analytics
+            Set<LocalDate> poolDates = allPools.stream()
+                    .filter(p -> p.getFoodDate() != null)
+                    .map(FoodPool::getFoodDate)
+                    .collect(Collectors.toSet());
+            
+            Set<LocalDate> collectionDates = allScans.stream()
+                    .filter(s -> s.getFoodDate() != null)
+                    .map(FoodScan::getFoodDate)
+                    .collect(Collectors.toSet());
+            
+            long vegVotes = allPools.stream().filter(p -> "veg".equals(p.getFoodType())).count();
+            long nonvegVotes = allPools.stream().filter(p -> "nonveg".equals(p.getFoodType())).count();
+            long collectedWithVote = allScans.stream().filter(FoodScan::isDidVote).count();
+            long collectedWithoutVote = allScans.stream().filter(s -> !s.isDidVote()).count();
+            
+            Map<String, Object> analytics = new HashMap<>();
+            analytics.put("poolDays", poolDates.size());
+            analytics.put("collectionDays", collectionDates.size());
+            analytics.put("totalVotes", allPools.size());
+            analytics.put("vegVotes", vegVotes);
+            analytics.put("nonvegVotes", nonvegVotes);
+            analytics.put("totalCollected", allScans.size());
+            analytics.put("collectedWithVote", collectedWithVote);
+            analytics.put("collectedWithoutVote", collectedWithoutVote);
+            analytics.put("dateRange", Map.of(
+                "start", start.format(DateTimeFormatter.ofPattern("MMM dd, yyyy")),
+                "end", end.format(DateTimeFormatter.ofPattern("MMM dd, yyyy"))
+            ));
+            
+            return ResponseEntity.ok(analytics);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+    
+    // ============== UPDATED POOL CONTROL WITH GRACE PERIOD ==============
+    
+    @PostMapping("/pool/open-with-grace")
+    @ResponseBody
+    public ResponseEntity<?> openPoolWithGrace(
+            @AuthenticationPrincipal OAuth2User user,
+            @RequestBody Map<String, Object> body) {
+        try {
+            String email = user.getAttribute("Email");
+            String name = user.getAttribute("employeeName");
+            
+            int duration = 6;
+            if (body.containsKey("duration")) {
+                Object durationObj = body.get("duration");
+                if (durationObj instanceof Integer) {
+                    duration = (Integer) durationObj;
+                } else if (durationObj instanceof String) {
+                    duration = Integer.parseInt((String) durationObj);
+                }
+            }
+            
+            LocalDate foodDate = LocalDate.now().plusDays(1);
+            if (body.containsKey("foodDate")) {
+                String foodDateStr = (String) body.get("foodDate");
+                if (foodDateStr != null && !foodDateStr.isEmpty()) {
+                    foodDate = LocalDate.parse(foodDateStr);
+                }
+            }
+            
+            int gracePeriod = 2;
+            if (body.containsKey("gracePeriod")) {
+                Object graceObj = body.get("gracePeriod");
+                if (graceObj instanceof Integer) {
+                    gracePeriod = (Integer) graceObj;
+                } else if (graceObj instanceof String) {
+                    gracePeriod = Integer.parseInt((String) graceObj);
+                }
+            }
+            
+            if (duration < 1) duration = 1;
+            if (duration > 24) duration = 24;
+            if (gracePeriod < 0) gracePeriod = 0;
+            if (gracePeriod > 4) gracePeriod = 4;
+            
+            foodPoolService.openPool(email, name, duration, foodDate, gracePeriod);
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true, 
+                "message", String.format("Survey started for %d hours with %d hour grace period. Food date: %s",
+                        duration, gracePeriod, foodDate.format(DateTimeFormatter.ofPattern("MMM dd, yyyy")))
+            ));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
